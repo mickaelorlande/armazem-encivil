@@ -67,10 +67,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                   to={item.path}
                   onClick={onMobileClose}
                   className={`
-                    flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                    flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150
                     ${isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent'}
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-0.5'}
                   `}
                 >
                   <Icon className="w-5 h-5 shrink-0" />
@@ -97,9 +97,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 
       {/* Mobile drawer overlay */}
       {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
+        <div className="md:hidden fixed inset-0 z-50 flex enc-fade-in">
           <div className="fixed inset-0 bg-black/60" onClick={onMobileClose} />
-          <div className="relative w-72 max-w-[85vw] h-full">
+          <div className="relative w-72 max-w-[85vw] h-full enc-slide-in-left">
             {sidebarContent}
           </div>
         </div>

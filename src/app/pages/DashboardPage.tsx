@@ -7,6 +7,33 @@ import { getUnitLabel } from '../data/mockData';
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
 import { useRole } from '@/features/auth/useRole';
 
+function SkeletonRow() {
+  return (
+    <div className="px-5 py-4 flex items-center gap-4 border-b border-border last:border-0">
+      <div className="skeleton h-3.5 w-16 shrink-0" />
+      <div className="skeleton h-3.5 flex-1" />
+      <div className="skeleton h-5 w-14 rounded-full shrink-0" />
+      <div className="skeleton h-3.5 w-12 shrink-0" />
+      <div className="skeleton h-3.5 w-20 shrink-0" />
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="p-3 rounded-lg border border-border space-y-2">
+      <div className="flex justify-between">
+        <div className="skeleton h-3.5 w-32" />
+        <div className="skeleton h-5 w-16 rounded-full" />
+      </div>
+      <div className="flex justify-between">
+        <div className="skeleton h-3 w-24" />
+        <div className="skeleton h-3 w-16" />
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const navigate = useNavigate();
   const { stats, loading } = useDashboard();
@@ -21,7 +48,7 @@ export function DashboardPage() {
       </div>
 
       {isAdmin && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 enc-fade-up">
           <button
             onClick={() => navigate('/novo-movimento')}
             className="flex items-center justify-center gap-2 py-4 bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 active:scale-95 transition-all font-medium shadow-sm"
@@ -39,30 +66,63 @@ export function DashboardPage() {
         </div>
       )}
 
+      {/* KPI cards — stagger entrada (Linear/Stripe pattern) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <StatCard title="Total Produtos"      value={loading ? '…' : (stats?.totalProducts ?? 0)}    icon={Package}         variant="default" />
-        <StatCard title="Entradas Hoje"       value={loading ? '…' : (stats?.todayEntries ?? 0)}     icon={ArrowDownCircle} variant="success" />
-        <StatCard title="Saídas Hoje"         value={loading ? '…' : (stats?.todayExits ?? 0)}       icon={ArrowUpCircle}   variant="warning" />
-        <StatCard title="Stock Baixo/Crítico" value={loading ? '…' : (stats?.lowStockProducts ?? 0)} icon={AlertTriangle}   variant="danger" />
+        <StatCard
+          title="Total Produtos"
+          value={loading ? '…' : (stats?.totalProducts ?? 0)}
+          icon={Package}
+          variant="default"
+          delay="delay-50"
+        />
+        <StatCard
+          title="Entradas Hoje"
+          value={loading ? '…' : (stats?.todayEntries ?? 0)}
+          icon={ArrowDownCircle}
+          variant="success"
+          delay="delay-100"
+        />
+        <StatCard
+          title="Saídas Hoje"
+          value={loading ? '…' : (stats?.todayExits ?? 0)}
+          icon={ArrowUpCircle}
+          variant="warning"
+          delay="delay-150"
+        />
+        <StatCard
+          title="Stock Baixo/Crítico"
+          value={loading ? '…' : (stats?.lowStockProducts ?? 0)}
+          icon={AlertTriangle}
+          variant="danger"
+          delay="delay-200"
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-        <div className="lg:col-span-2 bg-card rounded-xl border border-border">
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border enc-fade-up delay-150">
           <div className="p-4 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold text-base">Últimos Movimentos</h2>
           </div>
 
           {loading ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+            <div className="hidden md:block">
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+            </div>
           ) : !stats?.recentMovements.length ? (
             <div className="p-8 text-center text-sm text-muted-foreground">Sem movimentos registados</div>
           ) : (
             <>
               {/* Mobile: cards */}
               <div className="md:hidden divide-y divide-border">
-                {stats.recentMovements.slice(0, 5).map((m) => (
-                  <div key={m.id} className="p-4 flex items-start gap-3">
+                {stats.recentMovements.slice(0, 5).map((m, i) => (
+                  <div
+                    key={m.id}
+                    className={`p-4 flex items-start gap-3 enc-fade-up delay-${[50,100,150,200,250][i] ?? 250}`}
+                  >
                     <MovementTypeBadge type={m.type} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{m.productName}</p>
@@ -109,32 +169,36 @@ export function DashboardPage() {
           <div className="p-4 border-t border-border">
             <button
               onClick={() => navigate('/historico')}
-              className="text-sm text-primary hover:underline flex items-center gap-1"
+              className="text-sm text-primary hover:underline flex items-center gap-1 transition-colors"
             >
               Ver todo o histórico <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border border-border">
+        <div className="bg-card rounded-xl border border-border enc-fade-up delay-200">
           <div className="p-4 border-b border-border flex items-center justify-between">
             <h2 className="font-semibold text-base">Alertas de Stock</h2>
             <AlertTriangle className="w-5 h-5 text-warning" />
           </div>
           <div className="p-4">
             {loading ? (
-              <p className="text-sm text-muted-foreground text-center py-6">A carregar…</p>
+              <div className="space-y-3">
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
             ) : !stats?.lowStockItems.length ? (
               <p className="text-sm text-muted-foreground text-center py-6">
                 Todos os produtos com stock adequado ✓
               </p>
             ) : (
               <div className="space-y-3">
-                {stats.lowStockItems.map((p) => (
+                {stats.lowStockItems.map((p, i) => (
                   <div
                     key={p.id}
                     onClick={() => navigate(`/produtos/${p.id}`)}
-                    className="p-3 bg-accent/50 rounded-lg border border-border hover:border-primary/50 active:bg-accent transition-all cursor-pointer"
+                    className={`p-3 bg-accent/50 rounded-lg border border-border hover:border-primary/50 active:bg-accent transition-all cursor-pointer enc-fade-up delay-${[50,100,150,200][i] ?? 200}`}
                   >
                     <div className="flex items-start justify-between mb-1">
                       <p className="text-sm font-medium leading-tight flex-1 mr-2">{p.name}</p>

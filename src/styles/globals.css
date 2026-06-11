@@ -1,0 +1,86 @@
+/* ── ENCIVIL Motion System ───────────────────────────────────────────
+ * Pure CSS animations — zero runtime cost, GPU-composited transforms.
+ * All animations respect prefers-reduced-motion.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/* Keyframes */
+@keyframes enc-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes enc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes enc-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+@keyframes enc-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+@keyframes enc-slide-in-left {
+  from { opacity: 0.4; transform: translateX(-100%); }
+  to   { opacity: 1;   transform: translateX(0);     }
+}
+
+@keyframes enc-shimmer {
+  from { background-position: -400px 0; }
+  to   { background-position:  400px 0; }
+}
+
+/* Utility classes */
+.enc-page        { animation: enc-fade-up     0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.enc-fade-up     { animation: enc-fade-up     0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.enc-fade-in     { animation: enc-fade-in     0.2s  ease both; }
+.enc-scale-in    { animation: enc-scale-in    0.2s  cubic-bezier(0.22, 1, 0.36, 1) both; }
+.enc-slide-down  { animation: enc-slide-down  0.2s  cubic-bezier(0.22, 1, 0.36, 1) both; }
+.enc-slide-in-left { animation: enc-slide-in-left 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Stagger delays — combine with .enc-fade-up */
+.delay-50  { animation-delay:  50ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-250 { animation-delay: 250ms; }
+.delay-300 { animation-delay: 300ms; }
+
+/* Skeleton shimmer — replaces "A carregar…" text */
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 0px, #f8fafc 200px, #e2e8f0 400px);
+  background-size: 600px 100%;
+  animation: enc-shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* Card hover lift — Stripe/Vercel style */
+.card-lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  will-change: transform;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(30, 58, 138, 0.10), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .enc-page, .enc-fade-up, .enc-fade-in,
+  .enc-scale-in, .enc-slide-down, .enc-slide-in-left {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .skeleton {
+    animation: none !important;
+    background: #e2e8f0;
+  }
+  .card-lift:hover {
+    transform: none !important;
+  }
+}
