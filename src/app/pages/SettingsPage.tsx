@@ -1,40 +1,40 @@
 import { useState, useEffect } from 'react';
-import { Building2, User, Bell, Save } from 'lucide-react';
+import { Building2, Package, Save, User, Mail, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfiguracoes } from '@/features/configuracoes/hooks/useConfiguracoes';
+import { useAuth } from '@/features/auth/AuthContext';
+import { useRole } from '@/features/auth/useRole';
 
 export function SettingsPage() {
   const { config, loading, saving, atualizar } = useConfiguracoes();
+  const { user } = useAuth();
+  const { role } = useRole();
 
   const [formData, setFormData] = useState({
-    nomeEmpresa: '',
+    nomeEmpresa:        '',
     responsavelArmazem: '',
-    stockMinimoPadrao: '10',
-    enableNotifications: true,
-    notifyLowStock: true,
-    notifyNewMovements: false,
+    stockMinimoPadrao:  '10',
   });
 
   useEffect(() => {
     if (config) {
-      setFormData((prev) => ({
-        ...prev,
-        nomeEmpresa: config.nomeEmpresa,
+      setFormData({
+        nomeEmpresa:        config.nomeEmpresa,
         responsavelArmazem: config.responsavelArmazem ?? '',
-        stockMinimoPadrao: String(config.stockMinimoPadrao),
-      }));
+        stockMinimoPadrao:  String(config.stockMinimoPadrao),
+      });
     }
   }, [config]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const ok = await atualizar({
-      nomeEmpresa: formData.nomeEmpresa,
+      nomeEmpresa:        formData.nomeEmpresa,
       responsavelArmazem: formData.responsavelArmazem || null,
-      stockMinimoPadrao: parseFloat(formData.stockMinimoPadrao) || 10,
+      stockMinimoPadrao:  parseFloat(formData.stockMinimoPadrao) || 10,
     });
     if (ok) toast.success('Configurações guardadas com sucesso!');
-    else toast.error('Erro ao guardar configurações.');
+    else    toast.error('Erro ao guardar configurações.');
   };
 
   if (loading) {
@@ -45,20 +45,54 @@ export function SettingsPage() {
     );
   }
 
+  const inputCls = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base';
+
+  const roleLabel: Record<string, { label: string; cls: string }> = {
+    admin:  { label: 'Administrador',  cls: 'bg-primary/10 text-primary' },
+    gestor: { label: 'Gestor',         cls: 'bg-success/10 text-success' },
+  };
+  const roleBadge = roleLabel[role ?? ''] ?? { label: role ?? 'Utilizador', cls: 'bg-muted text-muted-foreground' };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-5">
       <div>
         <h1 className="text-xl md:text-2xl font-semibold">Configurações</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gerir preferências do sistema</p>
+        <p className="text-sm text-muted-foreground mt-1">Preferências do sistema ENCIVIL</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-card rounded-xl border border-border">
-          <div className="p-5 border-b border-border">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Building2 className="w-5 h-5" />
-              Dados da Empresa
-            </h3>
+      {/* Conta do utilizador */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+          <User className="w-4 h-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm">A Minha Conta</h3>
+        </div>
+        <div className="p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground">Email</span>
+            </div>
+            <span className="text-sm font-medium">{user?.email ?? '—'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Shield className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-sm text-muted-foreground">Permissões</span>
+            </div>
+            <span className={`text-xs font-bold px-3 py-1 rounded-full ${roleBadge.cls}`}>
+              {roleBadge.label}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+
+        {/* Dados da empresa */}
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm">Dados da Empresa</h3>
           </div>
           <div className="p-5 space-y-4">
             <div>
@@ -66,89 +100,56 @@ export function SettingsPage() {
               <input
                 type="text"
                 value={formData.nomeEmpresa}
-                onChange={(e) => setFormData({ ...formData, nomeEmpresa: e.target.value })}
-                className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                onChange={e => setFormData({ ...formData, nomeEmpresa: e.target.value })}
+                className={inputCls}
+                placeholder="ENCIVIL"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium mb-2">Responsável pelo Armazém</label>
               <input
                 type="text"
                 value={formData.responsavelArmazem}
-                onChange={(e) => setFormData({ ...formData, responsavelArmazem: e.target.value })}
-                className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                onChange={e => setFormData({ ...formData, responsavelArmazem: e.target.value })}
+                className={inputCls}
                 placeholder="Nome do responsável"
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border border-border">
-          <div className="p-5 border-b border-border">
-            <h3 className="font-semibold flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Preferências de Stock
-            </h3>
+        {/* Preferências de stock */}
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+            <Package className="w-4 h-4 text-muted-foreground" />
+            <h3 className="font-semibold text-sm">Preferências de Stock</h3>
           </div>
           <div className="p-5">
             <div>
-              <label className="block text-sm font-medium mb-2">Stock Mínimo Padrão</label>
+              <label className="block text-sm font-medium mb-1">Stock Mínimo Padrão</label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Valor sugerido ao criar novos produtos
+              </p>
               <input
                 type="number"
                 value={formData.stockMinimoPadrao}
-                onChange={(e) => setFormData({ ...formData, stockMinimoPadrao: e.target.value })}
-                className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                onChange={e => setFormData({ ...formData, stockMinimoPadrao: e.target.value })}
+                className={inputCls}
                 min="0"
+                placeholder="10"
               />
-              <p className="text-xs text-muted-foreground mt-1">Valor padrão para novos produtos</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border border-border">
-          <div className="p-5 border-b border-border">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Bell className="w-5 h-5" />
-              Notificações
-            </h3>
-          </div>
-          <div className="p-5 space-y-4">
-            {[
-              { key: 'enableNotifications', label: 'Ativar Notificações', desc: 'Receber alertas do sistema', disabled: false },
-              { key: 'notifyLowStock', label: 'Alertas de Stock Baixo', desc: 'Notificar quando produtos atingirem stock mínimo', disabled: !formData.enableNotifications },
-              { key: 'notifyNewMovements', label: 'Notificações de Movimentos', desc: 'Receber confirmação de cada movimento registado', disabled: !formData.enableNotifications },
-            ].map(({ key, label, desc, disabled }) => (
-              <div key={key} className="flex items-center justify-between p-4 bg-accent rounded-lg">
-                <div>
-                  <p className="font-medium text-sm">{label}</p>
-                  <p className="text-xs text-muted-foreground">{desc}</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData[key as keyof typeof formData] as boolean}
-                    onChange={(e) => setFormData({ ...formData, [key]: e.target.checked })}
-                    className="sr-only peer"
-                    disabled={disabled}
-                  />
-                  <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50"></div>
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-3 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-2 font-medium disabled:opacity-60"
-          >
-            <Save className="w-5 h-5" />
-            {saving ? 'A guardar…' : 'Guardar Configurações'}
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full py-4 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 font-bold disabled:opacity-60 shadow-sm"
+        >
+          <Save className="w-5 h-5" />
+          {saving ? 'A guardar…' : 'Guardar Configurações'}
+        </button>
       </form>
     </div>
   );
