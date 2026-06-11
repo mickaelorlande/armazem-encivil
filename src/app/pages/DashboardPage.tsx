@@ -1,0 +1,166 @@
+import { Package, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { StatCard } from '../components/StatCard';
+import { StockBadge } from '../components/StockBadge';
+import { MovementTypeBadge } from '../components/MovementTypeBadge';
+import { getUnitLabel } from '../data/mockData';
+import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
+import { useRole } from '@/features/auth/useRole';
+
+export function DashboardPage() {
+  const navigate = useNavigate();
+  const { stats, loading } = useDashboard();
+  const { isAdmin } = useRole();
+
+  return (
+    <div className="space-y-5">
+
+      <div>
+        <h1 className="text-xl md:text-2xl font-semibold">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Visão geral do armazém ENCIVIL</p>
+      </div>
+
+      {isAdmin && (
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => navigate('/novo-movimento')}
+            className="flex items-center justify-center gap-2 py-4 bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 active:scale-95 transition-all font-medium shadow-sm"
+          >
+            <ArrowUpCircle className="w-5 h-5" />
+            <span>Registar Saída</span>
+          </button>
+          <button
+            onClick={() => navigate('/novo-movimento')}
+            className="flex items-center justify-center gap-2 py-4 bg-success text-success-foreground rounded-xl hover:bg-success/90 active:scale-95 transition-all font-medium shadow-sm"
+          >
+            <ArrowDownCircle className="w-5 h-5" />
+            <span>Registar Entrada</span>
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <StatCard title="Total Produtos"      value={loading ? '…' : (stats?.totalProducts ?? 0)}    icon={Package}         variant="default" />
+        <StatCard title="Entradas Hoje"       value={loading ? '…' : (stats?.todayEntries ?? 0)}     icon={ArrowDownCircle} variant="success" />
+        <StatCard title="Saídas Hoje"         value={loading ? '…' : (stats?.todayExits ?? 0)}       icon={ArrowUpCircle}   variant="warning" />
+        <StatCard title="Stock Baixo/Crítico" value={loading ? '…' : (stats?.lowStockProducts ?? 0)} icon={AlertTriangle}   variant="danger" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border">
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <h2 className="font-semibold text-base">Últimos Movimentos</h2>
+          </div>
+
+          {loading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+          ) : !stats?.recentMovements.length ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">Sem movimentos registados</div>
+          ) : (
+            <>
+              {/* Mobile: cards */}
+              <div className="md:hidden divide-y divide-border">
+                {stats.recentMovements.slice(0, 5).map((m) => (
+                  <div key={m.id} className="p-4 flex items-start gap-3">
+                    <MovementTypeBadge type={m.type} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{m.productName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {m.quantity} {getUnitLabel(m.unit)} · {m.responsible}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {m.date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: tabela */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      {['Data/Hora', 'Produto', 'Tipo', 'Quantidade', 'Responsável'].map((h) => (
+                        <th key={h} className="px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {stats.recentMovements.map((m) => (
+                      <tr key={m.id} className="hover:bg-accent/50 transition-colors">
+                        <td className="px-5 py-3 whitespace-nowrap text-sm">
+                          {m.date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })}{' '}
+                          {m.date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="px-5 py-3 text-sm">{m.productName}</td>
+                        <td className="px-5 py-3 whitespace-nowrap"><MovementTypeBadge type={m.type} /></td>
+                        <td className="px-5 py-3 whitespace-nowrap text-sm">{m.quantity} {getUnitLabel(m.unit)}</td>
+                        <td className="px-5 py-3 whitespace-nowrap text-sm">{m.responsible}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          <div className="p-4 border-t border-border">
+            <button
+              onClick={() => navigate('/historico')}
+              className="text-sm text-primary hover:underline flex items-center gap-1"
+            >
+              Ver todo o histórico <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl border border-border">
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <h2 className="font-semibold text-base">Alertas de Stock</h2>
+            <AlertTriangle className="w-5 h-5 text-warning" />
+          </div>
+          <div className="p-4">
+            {loading ? (
+              <p className="text-sm text-muted-foreground text-center py-6">A carregar…</p>
+            ) : !stats?.lowStockItems.length ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Todos os produtos com stock adequado ✓
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {stats.lowStockItems.map((p) => (
+                  <div
+                    key={p.id}
+                    onClick={() => navigate(`/produtos/${p.id}`)}
+                    className="p-3 bg-accent/50 rounded-lg border border-border hover:border-primary/50 active:bg-accent transition-all cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between mb-1">
+                      <p className="text-sm font-medium leading-tight flex-1 mr-2">{p.name}</p>
+                      <StockBadge status={p.status} />
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Atual: <strong className="text-foreground">{p.currentStock} {getUnitLabel(p.unit)}</strong></span>
+                      <span>Mín: <strong className="text-warning">{p.minStock}</strong></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {!!stats?.lowStockItems.length && (
+            <div className="px-4 pb-4">
+              <button
+                onClick={() => navigate('/produtos')}
+                className="w-full py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors flex items-center justify-center gap-1"
+              >
+                Ver todos os produtos <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

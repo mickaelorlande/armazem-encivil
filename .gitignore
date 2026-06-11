@@ -1,0 +1,28 @@
+# Dependências
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+dist-ssr/
+
+# Variáveis de ambiente (NUNCA commitar)
+.env.local
+.env.*.local
+.env
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
