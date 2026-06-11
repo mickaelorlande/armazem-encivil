@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Menu, Warehouse } from 'lucide-react';
+import { Bell, User, LogOut, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@/features/auth/AuthContext';
 import { toast } from 'sonner';
@@ -24,7 +24,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
     <header className="bg-card border-b border-border px-4 py-3 sticky top-0 z-40">
       <div className="flex items-center justify-between gap-3">
 
-        {/* Mobile: hamburger + logo */}
+        {/* Mobile: hamburger + logo oficial */}
         <div className="flex items-center gap-3 md:hidden">
           <button
             onClick={onMenuOpen}
@@ -34,9 +34,12 @@ export function Header({ onMenuOpen }: HeaderProps) {
             <Menu className="w-5 h-5 text-foreground" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="bg-primary p-1.5 rounded-md">
-              <Warehouse className="w-4 h-4 text-white" />
-            </div>
+            <img
+              src="/icone_oficial.png"
+              alt="ENCIVIL"
+              className="w-8 h-8 object-contain"
+              draggable={false}
+            />
             <span className="font-semibold text-sm text-foreground">ENCIVIL</span>
           </div>
         </div>

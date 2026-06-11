@@ -6,7 +6,6 @@ import {
   History,
   FileBarChart,
   Settings,
-  Warehouse,
   BookOpen,
   X,
 } from 'lucide-react';
@@ -31,14 +30,20 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 
   const sidebarContent = (
     <aside className="w-64 bg-sidebar text-sidebar-foreground h-full flex flex-col border-r border-sidebar-border">
-      <div className="p-6 border-b border-sidebar-border flex items-center justify-between">
+      {/* Logo oficial no topo */}
+      <div className="p-5 border-b border-sidebar-border flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-primary p-2 rounded-lg">
-            <Warehouse className="w-6 h-6 text-primary-foreground" />
+          <div className="bg-white rounded-lg p-1.5 w-10 h-10 flex items-center justify-center shrink-0">
+            <img
+              src="/icone_oficial.png"
+              alt="ENCIVIL"
+              className="w-full h-full object-contain"
+              draggable={false}
+            />
           </div>
           <div>
-            <h1 className="text-white text-base font-semibold">ENCIVIL</h1>
-            <p className="text-xs text-sidebar-foreground/70">Controle Armazém</p>
+            <h1 className="text-white text-base font-semibold leading-tight">ENCIVIL</h1>
+            <p className="text-xs text-sidebar-foreground/70 leading-tight">Controle Armazém</p>
           </div>
         </div>
         {onMobileClose && (
