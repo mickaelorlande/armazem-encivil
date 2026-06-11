@@ -61,18 +61,29 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Cache estáticos (assets, JS, CSS)
+        // Activate new SW immediately — prevents stale-SW / new-index.html mismatch
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        // Estratégia: Network-first para navegação (dados sempre frescos)
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/auth\//],
         runtimeCaching: [
           {
-            // Assets estáticos: cache-first (imutáveis após build)
-            urlPattern: /\.(js|css|png|svg|ico|woff2?)$/,
-            handler: 'CacheFirst',
+            // JS/CSS: StaleWhileRevalidate so new chunks are fetched in background.
+            // CacheFirst would keep 30-day-old chunks even after a new deploy.
+            urlPattern: /\.(?:js|css)$/,
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'static-assets',
+              expiration: { maxAgeSeconds: 60 * 60 * 24 * 7 },
+            },
+          },
+          {
+            // Images/fonts: still CacheFirst — these never change between deploys
+            urlPattern: /\.(?:png|svg|ico|woff2?)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'immutable-assets',
               expiration: { maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
@@ -83,7 +94,7 @@ export default defineConfig({
             options: {
               cacheName: 'supabase-api',
               networkTimeoutSeconds: 10,
-              expiration: { maxAgeSeconds: 60 * 5 }, // fallback máx 5 min
+              expiration: { maxAgeSeconds: 60 * 5 },
             },
           },
         ],
