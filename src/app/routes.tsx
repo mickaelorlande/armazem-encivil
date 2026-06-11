@@ -13,6 +13,7 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ defaul
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const DocsPage = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
+const HelpPage = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
 
 function PageLoader() {
   return (
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
           { path: 'historico', element: <Suspense fallback={<PageLoader />}><HistoryPage /></Suspense> },
           { path: 'relatorios', element: <Suspense fallback={<PageLoader />}><ReportsPage /></Suspense> },
           { path: 'configuracoes', element: <Suspense fallback={<PageLoader />}><SettingsPage /></Suspense> },
+          { path: 'ajuda', element: <Suspense fallback={<PageLoader />}><HelpPage /></Suspense> },
           { path: 'documentacao', element: <Suspense fallback={<PageLoader />}><DocsPage /></Suspense> },
           { path: '*', element: <Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense> },
         ],

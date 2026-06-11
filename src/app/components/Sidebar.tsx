@@ -6,7 +6,7 @@ import {
   History,
   FileBarChart,
   Settings,
-  BookOpen,
+  CircleHelp,
   X,
 } from 'lucide-react';
 
@@ -17,7 +17,7 @@ const menuItems = [
   { path: '/historico',      label: 'Histórico',      icon: History },
   { path: '/relatorios',     label: 'Relatórios',     icon: FileBarChart },
   { path: '/configuracoes',  label: 'Configurações',  icon: Settings },
-  { path: '/documentacao',   label: 'Documentação',   icon: BookOpen },
+  { path: '/ajuda',          label: 'Ajuda',          icon: CircleHelp },
 ];
 
 interface SidebarProps {
