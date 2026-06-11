@@ -1,24 +1,40 @@
-import { Bell, User, LogOut, Menu } from 'lucide-react';
-import { useNavigate } from 'react-router';
-import { useAuth } from '@/features/auth/AuthContext';
-import { toast } from 'sonner';
+import { useState, useEffect, useRef } from 'react'
+import { Bell, User, LogOut, Menu } from 'lucide-react'
+import { useNavigate } from 'react-router'
+import { useAuth } from '@/features/auth/AuthContext'
+import { useNotifications } from '@/features/notificacoes/hooks/useNotifications'
+import { NotificationPanel } from './NotificationPanel'
 
 interface HeaderProps {
-  onMenuOpen?: () => void;
+  onMenuOpen?: () => void
 }
 
 export function Header({ onMenuOpen }: HeaderProps) {
-  const navigate = useNavigate();
-  const { signOut, user } = useAuth();
+  const navigate = useNavigate()
+  const { signOut, user } = useAuth()
+  const { count: notifCount } = useNotifications()
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!notifOpen) return
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [notifOpen])
 
   const handleLogout = async () => {
     if (window.confirm('Terminar sessão?')) {
-      await signOut();
-      navigate('/login');
+      await signOut()
+      navigate('/login')
     }
-  };
+  }
 
-  const displayName = user?.email?.split('@')[0] ?? 'Utilizador';
+  const displayName = user?.email?.split('@')[0] ?? 'Utilizador'
 
   return (
     <header className="bg-card border-b border-border px-4 py-3 sticky top-0 z-40">
@@ -58,10 +74,21 @@ export function Header({ onMenuOpen }: HeaderProps) {
 
         {/* Ações direita */}
         <div className="flex items-center gap-2 ml-auto">
-          <button className="p-2 hover:bg-accent rounded-lg transition-colors relative" aria-label="Notificações">
-            <Bell className="w-5 h-5 text-foreground" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-          </button>
+
+          {/* Sino + painel de notificações */}
+          <div ref={notifRef} className="relative">
+            <button
+              onClick={() => setNotifOpen(prev => !prev)}
+              className="p-2 hover:bg-accent rounded-lg transition-colors relative"
+              aria-label="Notificações"
+            >
+              <Bell className="w-5 h-5 text-foreground" />
+              {notifCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full animate-pulse" />
+              )}
+            </button>
+            {notifOpen && <NotificationPanel onClose={() => setNotifOpen(false)} />}
+          </div>
 
           {/* User info (só desktop) */}
           <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-accent rounded-lg">
@@ -83,5 +110,5 @@ export function Header({ onMenuOpen }: HeaderProps) {
         </div>
       </div>
     </header>
-  );
+  )
 }
