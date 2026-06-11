@@ -9,15 +9,16 @@ import {
   CircleHelp,
   X,
 } from 'lucide-react';
+import { useRole } from '@/features/auth/useRole';
 
-const menuItems = [
-  { path: '/',               label: 'Dashboard',     icon: LayoutDashboard },
-  { path: '/produtos',       label: 'Produtos',       icon: Package },
-  { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus },
-  { path: '/historico',      label: 'Histórico',      icon: History },
-  { path: '/relatorios',     label: 'Relatórios',     icon: FileBarChart },
-  { path: '/configuracoes',  label: 'Configurações',  icon: Settings },
-  { path: '/ajuda',          label: 'Ajuda',          icon: CircleHelp },
+const allMenuItems = [
+  { path: '/',               label: 'Dashboard',     icon: LayoutDashboard, adminOnly: false },
+  { path: '/produtos',       label: 'Produtos',       icon: Package,         adminOnly: false },
+  { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus,            adminOnly: false },
+  { path: '/historico',      label: 'Histórico',      icon: History,         adminOnly: false },
+  { path: '/relatorios',     label: 'Relatórios',     icon: FileBarChart,    adminOnly: false },
+  { path: '/configuracoes',  label: 'Configurações',  icon: Settings,        adminOnly: true  },
+  { path: '/ajuda',          label: 'Ajuda',          icon: CircleHelp,      adminOnly: false },
 ];
 
 interface SidebarProps {
@@ -27,6 +28,8 @@ interface SidebarProps {
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const location = useLocation();
+  const { isAdmin } = useRole();
+  const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin);
 
   const sidebarContent = (
     <aside className="w-64 bg-sidebar text-sidebar-foreground h-full flex flex-col border-r border-sidebar-border">

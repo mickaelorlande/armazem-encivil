@@ -49,7 +49,7 @@ export function SettingsPage() {
 
   const roleLabel: Record<string, { label: string; cls: string }> = {
     admin:  { label: 'Administrador',  cls: 'bg-primary/10 text-primary' },
-    gestor: { label: 'Gestor',         cls: 'bg-success/10 text-success' },
+    gestor: { label: 'Encarregado',    cls: 'bg-success/10 text-success' },
   };
   const roleBadge = roleLabel[role ?? ''] ?? { label: role ?? 'Utilizador', cls: 'bg-muted text-muted-foreground' };
 

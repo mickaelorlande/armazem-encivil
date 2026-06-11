@@ -104,10 +104,36 @@ export async function atualizarProduto(id: string, input: AtualizarProduto): Pro
   return toProduct(data as ProdutoRow)
 }
 
+export async function listarProdutosArquivados(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('produtos')
+    .select('*')
+    .eq('ativo', false)
+    .order('nome')
+  if (error) throw error
+  return (data as ProdutoRow[]).map(toProduct)
+}
+
 export async function desativarProduto(id: string): Promise<void> {
   const { error } = await supabase
     .from('produtos')
     .update({ ativo: false })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function restaurarProduto(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('produtos')
+    .update({ ativo: true })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deletarProduto(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('produtos')
+    .delete()
     .eq('id', id)
   if (error) throw error
 }

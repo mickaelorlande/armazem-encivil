@@ -1,35 +1,58 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, ArrowDownCircle, ArrowUpCircle, Package as PackageIcon } from 'lucide-react';
+import {
+  ArrowLeft, ArrowDownCircle, ArrowUpCircle,
+  Package as PackageIcon, Pencil, MoreVertical,
+  Archive, Trash2, RotateCcw,
+} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { toast } from 'sonner';
 import { StockBadge } from '../components/StockBadge';
 import { MovementTypeBadge } from '../components/MovementTypeBadge';
+import { EditProductModal } from '../components/EditProductModal';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { getCategoryLabel, getUnitLabel } from '../data/mockData';
-import { useProduto } from '@/features/produtos/hooks/useProdutos';
+import { useProduto, useDesativarProduto, useDeletarProduto } from '@/features/produtos/hooks/useProdutos';
 import { useMovimentos } from '@/features/movimentos/hooks/useMovimentos';
+import { useRole } from '@/features/auth/useRole';
+
+type Modal = 'edit' | 'archive' | 'delete' | null;
 
 export function ProductDetailPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const { id }      = useParams();
+  const navigate    = useNavigate();
+  const { isAdmin } = useRole();
 
-  const { product, loading: loadingProduct } = useProduto(id);
-  /* Sem limit — carrega todos os movimentos do produto para totais correctos */
+  const { product, loading: loadingProduct, reload } = useProduto(id);
   const movFiltros = useMemo(() => ({ produtoId: id }), [id]);
   const { movements, loading: loadingMovements } = useMovimentos(movFiltros);
 
+  const { desativar, loading: archiving } = useDesativarProduto();
+  const { deletar,   loading: deleting  } = useDeletarProduto();
+
+  const [modal,      setModal]      = useState<Modal>(null);
+  const [menuOpen,   setMenuOpen]   = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  /* Close kebab menu on outside click */
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
   const last7Days = useMemo(() => {
     const days = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (6 - i));
-      return {
-        date:     date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }),
-        Entradas: 0,
-        Saídas:   0,
-      };
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return { date: d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' }), Entradas: 0, Saídas: 0 };
     });
     movements.forEach(m => {
-      const dateStr = m.date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
-      const day = days.find(d => d.date === dateStr);
+      const ds = m.date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
+      const day = days.find(d => d.date === ds);
       if (day) {
         if (m.type === 'entrada') day.Entradas += m.quantity;
         else if (m.type === 'saida') day.Saídas += m.quantity;
@@ -37,6 +60,30 @@ export function ProductDetailPage() {
     });
     return days;
   }, [movements]);
+
+  const handleArchive = async () => {
+    if (!id) return;
+    const ok = await desativar(id);
+    if (ok) {
+      toast.success(`"${product?.name}" arquivado com sucesso.`);
+      navigate('/produtos');
+    } else {
+      toast.error('Erro ao arquivar produto.');
+    }
+    setModal(null);
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    const ok = await deletar(id);
+    if (ok) {
+      toast.success(`"${product?.name}" eliminado permanentemente.`);
+      navigate('/produtos');
+    } else {
+      toast.error('Erro ao eliminar. Verifique as permissões.');
+    }
+    setModal(null);
+  };
 
   if (loadingProduct) {
     return (
@@ -52,12 +99,13 @@ export function ProductDetailPage() {
         <h2 className="text-lg font-semibold">Produto não encontrado</h2>
         <button onClick={() => navigate('/produtos')}
           className="mt-4 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl">
-          Voltar para Produtos
+          Voltar
         </button>
       </div>
     );
   }
 
+  const hasMovements = !loadingMovements && movements.length > 0;
   const totalEntries = movements.filter(m => m.type === 'entrada').reduce((s, m) => s + m.quantity, 0);
   const totalExits   = movements.filter(m => m.type === 'saida').reduce((s, m) => s + m.quantity, 0);
 
@@ -79,9 +127,53 @@ export function ProductDetailPage() {
             {product.code} · {getCategoryLabel(product.category)}
           </p>
         </div>
+
+        {/* Admin actions */}
+        {isAdmin && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setModal('edit')}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors text-sm font-semibold"
+            >
+              <Pencil className="w-4 h-4" />
+              <span className="hidden sm:inline">Editar</span>
+            </button>
+
+            {/* Kebab menu — Archive / Delete */}
+            <div ref={menuRef} className="relative">
+              <button
+                onClick={() => setMenuOpen(v => !v)}
+                className="p-2 hover:bg-accent rounded-xl transition-colors"
+                aria-label="Mais ações"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-1 w-52 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden enc-slide-down">
+                  <button
+                    onClick={() => { setMenuOpen(false); setModal('archive'); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-accent transition-colors text-warning font-medium"
+                  >
+                    <Archive className="w-4 h-4" />
+                    Arquivar produto
+                  </button>
+                  {!hasMovements && (
+                    <button
+                      onClick={() => { setMenuOpen(false); setModal('delete'); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm hover:bg-destructive/5 transition-colors text-destructive font-medium border-t border-border"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Eliminar permanentemente
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Botões de acção — pré-preenchidos com este produto */}
+      {/* Botões de acção */}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => navigate(`/novo-movimento?produto=${product.id}&tipo=entrada`)}
@@ -101,33 +193,21 @@ export function ProductDetailPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-card rounded-2xl border border-border p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Stock Atual</p>
-          <p className={`text-3xl font-bold ${
-            product.status === 'sem-stock' ? 'text-destructive' :
-            product.status === 'baixo'     ? 'text-warning'     : 'text-foreground'
-          }`}>{product.currentStock}</p>
-          <p className="text-xs text-muted-foreground mt-1">{getUnitLabel(product.unit)}</p>
-        </div>
-        <div className="bg-card rounded-2xl border border-border p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Stock Mínimo</p>
-          <p className="text-3xl font-bold text-warning">{product.minStock}</p>
-          <p className="text-xs text-muted-foreground mt-1">{getUnitLabel(product.unit)}</p>
-        </div>
-        <div className="bg-card rounded-2xl border border-border p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Total Entrado</p>
-          <p className="text-3xl font-bold text-success">{loadingMovements ? '…' : totalEntries}</p>
-          <p className="text-xs text-muted-foreground mt-1">{getUnitLabel(product.unit)} (histórico)</p>
-        </div>
-        <div className="bg-card rounded-2xl border border-border p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Total Saído</p>
-          <p className="text-3xl font-bold text-destructive">{loadingMovements ? '…' : totalExits}</p>
-          <p className="text-xs text-muted-foreground mt-1">{getUnitLabel(product.unit)} (histórico)</p>
-        </div>
+        {[
+          { label: 'Stock Atual', value: product.currentStock, cls: product.status === 'sem-stock' ? 'text-destructive' : product.status === 'baixo' ? 'text-warning' : 'text-foreground' },
+          { label: 'Stock Mínimo', value: product.minStock, cls: 'text-warning' },
+          { label: 'Total Entrado', value: loadingMovements ? '…' : totalEntries, cls: 'text-success' },
+          { label: 'Total Saído',   value: loadingMovements ? '…' : totalExits,   cls: 'text-destructive' },
+        ].map(k => (
+          <div key={k.label} className="bg-card rounded-2xl border border-border p-4 card-lift">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{k.label}</p>
+            <p className={`text-3xl font-bold ${k.cls}`}>{k.value}</p>
+            <p className="text-xs text-muted-foreground mt-1">{getUnitLabel(product.unit)}</p>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
         {/* Gráfico 7 dias */}
         <div className="lg:col-span-2 bg-card rounded-2xl border border-border">
           <div className="p-5 border-b border-border">
@@ -140,10 +220,7 @@ export function ProductDetailPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: 12 }}
-                  cursor={{ fill: '#f1f5f9' }}
-                />
+                <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: 12 }} cursor={{ fill: '#f1f5f9' }} />
                 <Bar dataKey="Entradas" fill="#16a34a" radius={[6, 6, 0, 0]} maxBarSize={32} />
                 <Bar dataKey="Saídas"   fill="#dc2626" radius={[6, 6, 0, 0]} maxBarSize={32} />
               </BarChart>
@@ -151,26 +228,21 @@ export function ProductDetailPage() {
           </div>
         </div>
 
-        {/* Informações do produto */}
+        {/* Info do produto */}
         <div className="bg-card rounded-2xl border border-border p-5">
           <h3 className="font-semibold mb-4">Informações</h3>
           <div className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Estado</p>
-              <StockBadge status={product.status} />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Categoria</p>
-              <p className="text-sm font-medium">{getCategoryLabel(product.category)}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Unidade</p>
-              <p className="text-sm font-medium">{getUnitLabel(product.unit)}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Criado em</p>
-              <p className="text-sm font-medium">{product.createdAt.toLocaleDateString('pt-PT')}</p>
-            </div>
+            {[
+              { label: 'Estado',    value: <StockBadge status={product.status} /> },
+              { label: 'Categoria', value: getCategoryLabel(product.category) },
+              { label: 'Unidade',   value: getUnitLabel(product.unit) },
+              { label: 'Criado em', value: product.createdAt.toLocaleDateString('pt-PT') },
+            ].map(row => (
+              <div key={row.label}>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{row.label}</p>
+                <div className="text-sm font-medium">{row.value}</div>
+              </div>
+            ))}
             {product.notes && (
               <div>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Observações</p>
@@ -181,12 +253,12 @@ export function ProductDetailPage() {
         </div>
       </div>
 
-      {/* Histórico completo */}
+      {/* Histórico */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="p-5 border-b border-border">
           <h3 className="font-semibold">Histórico Completo</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {loadingMovements ? 'A carregar…' : `${movements.length} movimento${movements.length !== 1 ? 's' : ''} registado${movements.length !== 1 ? 's' : ''}`}
+            {loadingMovements ? 'A carregar…' : `${movements.length} movimento${movements.length !== 1 ? 's' : ''}`}
           </p>
         </div>
 
@@ -252,6 +324,38 @@ export function ProductDetailPage() {
           </>
         )}
       </div>
+
+      {/* Modais */}
+      {modal === 'edit' && (
+        <EditProductModal
+          product={product}
+          hasMovements={hasMovements}
+          onClose={() => setModal(null)}
+          onSuccess={updated => { setModal(null); reload(); void updated; }}
+        />
+      )}
+      {modal === 'archive' && (
+        <ConfirmDialog
+          title={`Arquivar "${product.name}"?`}
+          description="O produto ficará oculto na lista de produtos ativos. Pode ser restaurado a qualquer momento na tab 'Arquivados'."
+          confirmLabel="Arquivar Produto"
+          variant="warning"
+          loading={archiving}
+          onConfirm={handleArchive}
+          onCancel={() => setModal(null)}
+        />
+      )}
+      {modal === 'delete' && (
+        <ConfirmDialog
+          title={`Eliminar "${product.name}" permanentemente?`}
+          description="Esta ação é irreversível. O produto será apagado da base de dados definitivamente."
+          confirmLabel="Eliminar Permanentemente"
+          variant="danger"
+          loading={deleting}
+          onConfirm={handleDelete}
+          onCancel={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }

@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import type { Product } from '@/app/types'
 import {
   listarProdutos,
+  listarProdutosArquivados,
   buscarProduto,
   criarProduto,
   atualizarProduto,
   desativarProduto,
+  restaurarProduto,
+  deletarProduto,
   type NovoProduto,
   type AtualizarProduto,
 } from '../services/produtosService'
@@ -99,20 +102,50 @@ export function useAtualizarProduto() {
   return { atualizar, loading, error }
 }
 
+export function useProdutosArquivados() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try { setProducts(await listarProdutosArquivados()) }
+    catch { setProducts([]) }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+  return { products, loading, reload: load }
+}
+
 export function useDesativarProduto() {
   const [loading, setLoading] = useState(false)
-
   const desativar = async (id: string): Promise<boolean> => {
     setLoading(true)
-    try {
-      await desativarProduto(id)
-      return true
-    } catch {
-      return false
-    } finally {
-      setLoading(false)
-    }
+    try { await desativarProduto(id); return true }
+    catch { return false }
+    finally { setLoading(false) }
   }
-
   return { desativar, loading }
+}
+
+export function useRestaurarProduto() {
+  const [loading, setLoading] = useState(false)
+  const restaurar = async (id: string): Promise<boolean> => {
+    setLoading(true)
+    try { await restaurarProduto(id); return true }
+    catch { return false }
+    finally { setLoading(false) }
+  }
+  return { restaurar, loading }
+}
+
+export function useDeletarProduto() {
+  const [loading, setLoading] = useState(false)
+  const deletar = async (id: string): Promise<boolean> => {
+    setLoading(true)
+    try { await deletarProduto(id); return true }
+    catch { return false }
+    finally { setLoading(false) }
+  }
+  return { deletar, loading }
 }
