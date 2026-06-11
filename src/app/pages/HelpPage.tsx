@@ -244,10 +244,10 @@ export function HelpPage() {
           </div>
         </div>
         <a
-          href="mailto:admin@encivil.pt"
+          href="mailto:mickael.encivil@hotmail.com"
           className="flex items-center justify-between w-full py-3 px-4 bg-accent rounded-xl hover:bg-accent/80 active:scale-[0.98] transition-all"
         >
-          <span className="text-sm font-medium text-foreground">admin@encivil.pt</span>
+          <span className="text-sm font-medium text-foreground">mickael.encivil@hotmail.com</span>
           <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </a>
       </div>
