@@ -145,6 +145,11 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
       @media print {
         body > *:not(#encivil-print-root) { display: none !important; }
         #encivil-print-root { display: block !important; position: static !important; overflow: visible !important; }
+        #encivil-print-root * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
         .no-print { display: none !important; }
         @page { margin: 12mm 15mm; size: A4 portrait; }
         .page-break { page-break-before: always; }
