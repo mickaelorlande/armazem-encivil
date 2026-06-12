@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { createBrowserRouter, Navigate, useRouteError } from 'react-router';
 
 function RouteErrorPage() {
@@ -74,29 +74,21 @@ function RouteErrorPage() {
     </div>
   );
 }
+
 import { MainLayout } from './layouts/MainLayout';
 import { AuthGuard } from '@/features/auth/AuthGuard';
 import { RoleGuard } from '@/features/auth/RoleGuard';
 import { LoginPage } from './pages/LoginPage';
-
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
-const ProductsPage = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
-const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage').then(m => ({ default: m.ProductDetailPage })));
-const NewMovementPage = lazy(() => import('./pages/NewMovementPage').then(m => ({ default: m.NewMovementPage })));
-const HistoryPage = lazy(() => import('./pages/HistoryPage').then(m => ({ default: m.HistoryPage })));
-const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
-const DocsPage = lazy(() => import('./pages/DocsPage').then(m => ({ default: m.DocsPage })));
-const HelpPage = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })));
-
-function PageLoader() {
-  return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
-}
+import { DashboardPage } from './pages/DashboardPage';
+import { ProductsPage } from './pages/ProductsPage';
+import { ProductDetailPage } from './pages/ProductDetailPage';
+import { NewMovementPage } from './pages/NewMovementPage';
+import { HistoryPage } from './pages/HistoryPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { DocsPage } from './pages/DocsPage';
+import { HelpPage } from './pages/HelpPage';
 
 export const router = createBrowserRouter([
   {
@@ -112,16 +104,16 @@ export const router = createBrowserRouter([
         Component: MainLayout,
         errorElement: <RouteErrorPage />,
         children: [
-          { index: true, element: <Suspense fallback={<PageLoader />}><DashboardPage /></Suspense> },
-          { path: 'produtos', element: <Suspense fallback={<PageLoader />}><ProductsPage /></Suspense> },
-          { path: 'produtos/:id', element: <Suspense fallback={<PageLoader />}><ProductDetailPage /></Suspense> },
-          { path: 'novo-movimento', element: <Suspense fallback={<PageLoader />}><NewMovementPage /></Suspense> },
-          { path: 'historico', element: <Suspense fallback={<PageLoader />}><HistoryPage /></Suspense> },
-          { path: 'relatorios', element: <Suspense fallback={<PageLoader />}><ReportsPage /></Suspense> },
-          { path: 'configuracoes', element: <Suspense fallback={<PageLoader />}><RoleGuard require="admin"><SettingsPage /></RoleGuard></Suspense> },
-          { path: 'ajuda', element: <Suspense fallback={<PageLoader />}><HelpPage /></Suspense> },
-          { path: 'documentacao', element: <Suspense fallback={<PageLoader />}><DocsPage /></Suspense> },
-          { path: '*', element: <Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense> },
+          { index: true,           element: <DashboardPage /> },
+          { path: 'produtos',      element: <ProductsPage /> },
+          { path: 'produtos/:id',  element: <ProductDetailPage /> },
+          { path: 'novo-movimento', element: <NewMovementPage /> },
+          { path: 'historico',     element: <HistoryPage /> },
+          { path: 'relatorios',    element: <ReportsPage /> },
+          { path: 'configuracoes', element: <RoleGuard require="admin"><SettingsPage /></RoleGuard> },
+          { path: 'ajuda',         element: <HelpPage /> },
+          { path: 'documentacao',  element: <DocsPage /> },
+          { path: '*',             element: <NotFoundPage /> },
         ],
       },
     ],
