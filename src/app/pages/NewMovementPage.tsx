@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import {
   ArrowDownCircle, ArrowUpCircle, AlertTriangle,
@@ -9,12 +9,12 @@ import { getUnitLabel } from '../data/mockData';
 import type { MovementType } from '../types';
 import { useProdutos } from '@/features/produtos/hooks/useProdutos';
 import { useRegistarMovimento } from '@/features/movimentos/hooks/useMovimentos';
-import { useAuth } from '@/features/auth/AuthContext';
+import { useRole } from '@/features/auth/useRole';
 
 export function NewMovementPage() {
   const navigate   = useNavigate();
   const location   = useLocation();
-  const { user }   = useAuth();
+  const { nome }   = useRole();
   const { products, loading: productsLoading } = useProdutos();
   const { registar, loading: saving } = useRegistarMovimento();
 
@@ -32,10 +32,15 @@ export function NewMovementPage() {
     type:        paramTipo,
     productId:   paramProd,
     quantity:    '',
-    responsible: user?.email?.split('@')[0] ?? '',
+    responsible: nome,
     destination: '',
     notes:       '',
   });
+
+  // Sync responsible field once the profile is loaded (nome may arrive after first render)
+  useEffect(() => {
+    if (nome) setFormData(prev => ({ ...prev, responsible: prev.responsible || nome }));
+  }, [nome]);
 
   const set = (patch: Partial<typeof formData>) =>
     setFormData(prev => ({ ...prev, ...patch }));

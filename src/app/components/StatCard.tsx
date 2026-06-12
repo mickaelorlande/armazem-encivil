@@ -12,6 +12,7 @@ interface StatCardProps {
 
 function AnimatedNumber({ value }: { value: number }) {
   const display = useCountUp(value);
+  if (display === undefined) return <span className="inline-block h-8 w-14 skeleton rounded" />;
   return <>{display}</>;
 }
 

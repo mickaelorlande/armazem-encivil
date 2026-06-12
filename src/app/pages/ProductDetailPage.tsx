@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, Link } from 'react-router';
 import {
   ArrowLeft, ArrowDownCircle, ArrowUpCircle,
   Package as PackageIcon, Pencil, MoreVertical,
@@ -24,7 +24,7 @@ export function ProductDetailPage() {
   const { isAdmin } = useRole();
 
   const { product, loading: loadingProduct, reload } = useProduto(id);
-  const movFiltros = useMemo(() => ({ produtoId: id }), [id]);
+  const movFiltros = useMemo(() => ({ produtoId: id, limit: 20 }), [id]);
   const { movements, loading: loadingMovements } = useMovimentos(movFiltros);
 
   const { desativar, loading: archiving } = useDesativarProduto();
@@ -255,11 +255,19 @@ export function ProductDetailPage() {
 
       {/* Histórico */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        <div className="p-5 border-b border-border">
-          <h3 className="font-semibold">Histórico Completo</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {loadingMovements ? 'A carregar…' : `${movements.length} movimento${movements.length !== 1 ? 's' : ''}`}
-          </p>
+        <div className="p-5 border-b border-border flex items-start justify-between gap-2">
+          <div>
+            <h3 className="font-semibold">Últimos Movimentos</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {loadingMovements ? 'A carregar…' : `${movements.length} movimento${movements.length !== 1 ? 's' : ''} (últimos 20)`}
+            </p>
+          </div>
+          <Link
+            to={`/historico?produto=${id}`}
+            className="text-xs text-primary hover:underline whitespace-nowrap mt-0.5"
+          >
+            Ver histórico completo →
+          </Link>
         </div>
 
         {loadingMovements ? (
@@ -273,7 +281,7 @@ export function ProductDetailPage() {
           <>
             {/* Mobile */}
             <div className="md:hidden divide-y divide-border">
-              {movements.slice(0, 20).map(m => (
+              {movements.map(m => (
                 <div key={m.id} className="p-4">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2">

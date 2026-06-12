@@ -45,11 +45,13 @@ export interface Movement {
   newStock: number;
 }
 
+export type LowStockItem = Pick<Product, 'id' | 'name' | 'unit' | 'currentStock' | 'minStock' | 'status'>;
+
 export interface DashboardStats {
   totalProducts: number;
   todayEntries: number;
   todayExits: number;
   lowStockProducts: number;
   recentMovements: Movement[];
-  lowStockItems: Product[];
+  lowStockItems: LowStockItem[];
 }

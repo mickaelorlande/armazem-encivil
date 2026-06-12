@@ -7,9 +7,15 @@ dist/
 dist-ssr/
 
 # Variáveis de ambiente (NUNCA commitar)
+.env
 .env.local
 .env.*.local
-.env
+.env.production
+.env.production.local
+.env.staging
+secrets/
+*.pem
+*.key
 
 # Editor
 .vscode/

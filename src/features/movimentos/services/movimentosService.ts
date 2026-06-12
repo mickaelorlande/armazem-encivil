@@ -43,26 +43,58 @@ export type FiltrosMovimentos = {
   offset?: number
 }
 
+export const PAGE_SIZE = 50
+
 export async function listarMovimentos(filtros: FiltrosMovimentos = {}): Promise<Movement[]> {
   let query = supabase
     .from('movimentos_stock')
     .select('*, produtos(nome, unidade)')
     .order('created_at', { ascending: false })
 
-  if (filtros.produtoId) query = query.eq('produto_id', filtros.produtoId)
-  if (filtros.tipo) query = query.eq('tipo', filtros.tipo)
+  if (filtros.produtoId)  query = query.eq('produto_id', filtros.produtoId)
+  if (filtros.tipo)       query = query.eq('tipo', filtros.tipo)
   if (filtros.dataInicio) query = query.gte('created_at', filtros.dataInicio.toISOString())
   if (filtros.dataFim) {
     const fim = new Date(filtros.dataFim)
     fim.setDate(fim.getDate() + 1)
     query = query.lt('created_at', fim.toISOString())
   }
-  if (filtros.limit) query = query.limit(filtros.limit)
+  if (filtros.limit)  query = query.limit(filtros.limit)
   if (filtros.offset) query = query.range(filtros.offset, filtros.offset + (filtros.limit ?? 20) - 1)
 
   const { data, error } = await query
   if (error) throw error
   return (data as MovimentoRow[]).map(toMovement)
+}
+
+export async function listarMovimentosPaginados(
+  filtros: FiltrosMovimentos = {},
+  page = 0,
+): Promise<{ data: Movement[]; count: number }> {
+  const from = page * PAGE_SIZE
+  const to   = from + PAGE_SIZE - 1
+
+  let query = supabase
+    .from('movimentos_stock')
+    .select('*, produtos(nome, unidade)', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (filtros.produtoId)  query = query.eq('produto_id', filtros.produtoId)
+  if (filtros.tipo)       query = query.eq('tipo', filtros.tipo)
+  if (filtros.dataInicio) query = query.gte('created_at', filtros.dataInicio.toISOString())
+  if (filtros.dataFim) {
+    const fim = new Date(filtros.dataFim)
+    fim.setDate(fim.getDate() + 1)
+    query = query.lt('created_at', fim.toISOString())
+  }
+
+  const { data, error, count } = await query
+  if (error) throw error
+  return {
+    data:  (data as MovimentoRow[]).map(toMovement),
+    count: count ?? 0,
+  }
 }
 
 export type RegistarMovimentoInput = {

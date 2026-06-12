@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Package, Save, User, Mail, Shield } from 'lucide-react';
+import { Building2, Package, Save, User, Mail, Shield, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConfiguracoes } from '@/features/configuracoes/hooks/useConfiguracoes';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -8,7 +8,7 @@ import { useRole } from '@/features/auth/useRole';
 export function SettingsPage() {
   const { config, loading, saving, atualizar } = useConfiguracoes();
   const { user } = useAuth();
-  const { role } = useRole();
+  const { role, isAdmin } = useRole();
 
   const [formData, setFormData] = useState({
     nomeEmpresa:        '',
@@ -60,6 +60,16 @@ export function SettingsPage() {
         <p className="text-sm text-muted-foreground mt-1">Preferências do sistema ENCIVIL</p>
       </div>
 
+      {!isAdmin && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Apenas de visualização</p>
+            <p className="text-xs text-amber-700 mt-0.5">Só administradores podem editar as configurações da empresa.</p>
+          </div>
+        </div>
+      )}
+
       {/* Conta do utilizador */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
@@ -87,6 +97,7 @@ export function SettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        <fieldset disabled={!isAdmin} className="contents">
 
         {/* Dados da empresa */}
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -144,12 +155,13 @@ export function SettingsPage() {
 
         <button
           type="submit"
-          disabled={saving}
-          className="w-full py-4 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 font-bold disabled:opacity-60 shadow-sm"
+          disabled={saving || !isAdmin}
+          className="w-full py-4 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 font-bold disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
         >
           <Save className="w-5 h-5" />
           {saving ? 'A guardar…' : 'Guardar Configurações'}
         </button>
+        </fieldset>
       </form>
     </div>
   );

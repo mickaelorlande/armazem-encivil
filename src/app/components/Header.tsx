@@ -2,8 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { Bell, User, LogOut, Menu } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/features/auth/AuthContext'
+import { useRole } from '@/features/auth/useRole'
 import { useNotifications } from '@/features/notificacoes/hooks/useNotifications'
 import { NotificationPanel } from './NotificationPanel'
+
+const ROLE_LABELS: Record<string, string> = {
+  admin:   'Administrador',
+  gestor:  'Encarregado',
+}
 
 interface HeaderProps {
   onMenuOpen?: () => void
@@ -11,8 +17,9 @@ interface HeaderProps {
 
 export function Header({ onMenuOpen }: HeaderProps) {
   const navigate = useNavigate()
-  const { signOut, user } = useAuth()
-  const { count: notifCount } = useNotifications()
+  const { signOut } = useAuth()
+  const { nome, role } = useRole()
+  const { notifications, count: notifCount, loading: notifLoading } = useNotifications()
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
@@ -34,7 +41,8 @@ export function Header({ onMenuOpen }: HeaderProps) {
     }
   }
 
-  const displayName = user?.email?.split('@')[0] ?? 'Utilizador'
+  const displayName = nome || 'Utilizador'
+  const roleLabel = role ? (ROLE_LABELS[role] ?? role) : ''
 
   return (
     <header className="bg-card border-b border-border px-4 py-3 sticky top-0 z-40">
@@ -87,7 +95,13 @@ export function Header({ onMenuOpen }: HeaderProps) {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full animate-pulse" />
               )}
             </button>
-            {notifOpen && <NotificationPanel onClose={() => setNotifOpen(false)} />}
+            {notifOpen && (
+              <NotificationPanel
+                notifications={notifications}
+                loading={notifLoading}
+                onClose={() => setNotifOpen(false)}
+              />
+            )}
           </div>
 
           {/* User info (só desktop) */}
@@ -95,7 +109,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
             <User className="w-5 h-5 text-foreground" />
             <div className="text-sm">
               <p className="font-medium capitalize">{displayName}</p>
-              <p className="text-xs text-muted-foreground">Administrador</p>
+              <p className="text-xs text-muted-foreground">{roleLabel}</p>
             </div>
           </div>
 

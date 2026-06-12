@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import type { DashboardStats, Movement, Product, Unit, MovementType, ProductCategory } from '@/app/types'
+import type { DashboardStats, LowStockItem, Movement, Unit, MovementType } from '@/app/types'
 
 type StockStatus = 'normal' | 'baixo' | 'sem-stock'
 
@@ -40,7 +40,9 @@ export function useDashboard() {
           .select('*', { count: 'exact', head: true })
           .eq('tipo', 'saida')
           .gte('created_at', todayStart.toISOString()),
-        supabase.from('produtos').select('*').eq('ativo', true),
+        supabase.from('produtos')
+          .select('id, nome, unidade, stock_atual, stock_minimo')
+          .eq('ativo', true),
         supabase
           .from('movimentos_stock')
           .select('*, produtos(nome, unidade)')
@@ -51,9 +53,8 @@ export function useDashboard() {
       if (e1 || e2 || e3 || e4 || e5) throw e1 ?? e2 ?? e3 ?? e4 ?? e5
 
       type ProdRow = {
-        id: string; codigo: string; nome: string; categoria: string; unidade: string
-        stock_atual: number; stock_minimo: number; ativo: boolean
-        observacoes: string | null; created_at: string; updated_at: string
+        id: string; nome: string; unidade: string
+        stock_atual: number; stock_minimo: number
       }
       type MovRow = {
         id: string; produto_id: string; tipo: MovementType; quantidade: number
@@ -62,13 +63,10 @@ export function useDashboard() {
         created_by: string; produtos: { nome: string; unidade: string } | null
       }
 
-      const mapProduct = (p: ProdRow): Product => ({
-        id: p.id, code: p.codigo, name: p.nome,
-        category: p.categoria as ProductCategory, unit: p.unidade as Unit,
+      const mapProduct = (p: ProdRow): LowStockItem => ({
+        id: p.id, name: p.nome, unit: p.unidade as Unit,
         currentStock: p.stock_atual, minStock: p.stock_minimo,
         status: calcStatus(p.stock_atual, p.stock_minimo),
-        notes: p.observacoes ?? undefined,
-        createdAt: new Date(p.created_at), updatedAt: new Date(p.updated_at),
       })
 
       const products = (allProducts as ProdRow[]).map(mapProduct)

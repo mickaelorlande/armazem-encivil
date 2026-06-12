@@ -53,6 +53,7 @@ function RouteErrorPage() {
 }
 import { MainLayout } from './layouts/MainLayout';
 import { AuthGuard } from '@/features/auth/AuthGuard';
+import { RoleGuard } from '@/features/auth/RoleGuard';
 import { LoginPage } from './pages/LoginPage';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -94,7 +95,7 @@ export const router = createBrowserRouter([
           { path: 'novo-movimento', element: <Suspense fallback={<PageLoader />}><NewMovementPage /></Suspense> },
           { path: 'historico', element: <Suspense fallback={<PageLoader />}><HistoryPage /></Suspense> },
           { path: 'relatorios', element: <Suspense fallback={<PageLoader />}><ReportsPage /></Suspense> },
-          { path: 'configuracoes', element: <Suspense fallback={<PageLoader />}><SettingsPage /></Suspense> },
+          { path: 'configuracoes', element: <Suspense fallback={<PageLoader />}><RoleGuard require="admin"><SettingsPage /></RoleGuard></Suspense> },
           { path: 'ajuda', element: <Suspense fallback={<PageLoader />}><HelpPage /></Suspense> },
           { path: 'documentacao', element: <Suspense fallback={<PageLoader />}><DocsPage /></Suspense> },
           { path: '*', element: <Suspense fallback={<PageLoader />}><NotFoundPage /></Suspense> },

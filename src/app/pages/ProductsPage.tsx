@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, Package as PackageIcon, ChevronRight, RotateCcw, Archive } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -6,6 +6,7 @@ import { StockBadge } from '../components/StockBadge';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { getCategoryLabel, getUnitLabel } from '../data/mockData';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useProdutos,
   useProdutosArquivados,
@@ -329,10 +330,17 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     initialStock: '', minStock: '', notes: '',
   });
 
+  // Sugerir código único ao abrir o modal
+  useEffect(() => {
+    supabase.rpc('gerar_codigo_produto').then(({ data }) => {
+      if (data) setFormData(prev => ({ ...prev, code: prev.code || data }));
+    });
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = await criar({
-      code:         formData.code || `PROD${Date.now()}`,
+      code:         formData.code,
       name:         formData.name,
       category:     formData.category,
       unit:         formData.unit,

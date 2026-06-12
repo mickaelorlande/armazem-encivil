@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { History, ArrowDownCircle, ArrowUpCircle, LayoutList, X } from 'lucide-react';
+import { useSearchParams } from 'react-router';
+import { History, ArrowDownCircle, ArrowUpCircle, LayoutList, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { MovementTypeBadge } from '../components/MovementTypeBadge';
 import { EmptyState } from '../components/EmptyState';
 import { getUnitLabel } from '../data/mockData';
 import type { MovementType } from '../types';
-import { useMovimentos } from '@/features/movimentos/hooks/useMovimentos';
-import type { FiltrosMovimentos } from '@/features/movimentos/services/movimentosService';
+import { useMovimentosPaginados } from '@/features/movimentos/hooks/useMovimentos';
+import { type FiltrosMovimentos, PAGE_SIZE } from '@/features/movimentos/services/movimentosService';
 
 type PeriodFilter = 'todos' | 'hoje' | 'semana' | 'mes';
 type TypeFilter   = MovementType | 'todos';
@@ -25,11 +26,15 @@ const typeOpts: { value: TypeFilter; label: string }[] = [
 ];
 
 export function HistoryPage() {
+  const [searchParams] = useSearchParams();
+  const produtoParam = searchParams.get('produto') ?? undefined;
+
   const [filterType,   setFilterType]   = useState<TypeFilter>('todos');
   const [filterPeriod, setFilterPeriod] = useState<PeriodFilter>('todos');
 
   const filtros = useMemo((): FiltrosMovimentos => {
     const f: FiltrosMovimentos = {}
+    if (produtoParam) f.produtoId = produtoParam
     if (filterType !== 'todos') f.tipo = filterType as MovementType
     if (filterPeriod === 'hoje') {
       const d = new Date(); d.setHours(0, 0, 0, 0); f.dataInicio = d
@@ -39,9 +44,9 @@ export function HistoryPage() {
       const d = new Date(); d.setMonth(d.getMonth() - 1); f.dataInicio = d
     }
     return f
-  }, [filterType, filterPeriod])
+  }, [produtoParam, filterType, filterPeriod])
 
-  const { movements, loading } = useMovimentos(filtros);
+  const { movements, count, page, totalPages, loading, setPage } = useMovimentosPaginados(filtros);
   const hasFilter = filterType !== 'todos' || filterPeriod !== 'todos';
 
   const selectCls = 'px-3 py-2.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm w-full';
@@ -52,7 +57,12 @@ export function HistoryPage() {
         <div>
           <h1 className="text-xl md:text-2xl font-semibold">Histórico</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {loading ? 'A carregar…' : `${movements.length} movimento${movements.length !== 1 ? 's' : ''}`}
+            {loading
+              ? 'A carregar…'
+              : count > 0
+              ? `${count} movimento${count !== 1 ? 's' : ''}${totalPages > 1 ? ` · página ${page + 1} de ${totalPages}` : ''}`
+              : 'Nenhum movimento'
+            }
           </p>
         </div>
       </div>
@@ -128,7 +138,7 @@ export function HistoryPage() {
           <EmptyState icon={History} title="Nenhum movimento encontrado" description="Tente alterar os filtros." />
         ) : (
           <>
-            {/* Mobile: cards simplificados */}
+            {/* Mobile: cards */}
             <div className="md:hidden divide-y divide-border">
               {movements.map(m => (
                 <div key={m.id} className="p-4">
@@ -191,6 +201,37 @@ export function HistoryPage() {
               </table>
             </div>
           </>
+        )}
+
+        {/* Paginação — só aparece quando há mais de uma página */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-border flex items-center justify-between gap-3">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0 || loading}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl border border-border hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Anterior
+            </button>
+
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <span className="hidden sm:inline">Página</span>
+              <span className="font-semibold text-foreground">{page + 1}</span>
+              <span>de</span>
+              <span className="font-semibold text-foreground">{totalPages}</span>
+              <span className="hidden sm:inline text-xs">· {PAGE_SIZE} por página</span>
+            </div>
+
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1 || loading}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl border border-border hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Seguinte
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </div>
     </div>

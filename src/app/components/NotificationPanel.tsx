@@ -1,15 +1,16 @@
 import { useNavigate } from 'react-router'
 import { Bell, AlertTriangle, XCircle, Package, ChevronRight, X } from 'lucide-react'
-import { useNotifications } from '@/features/notificacoes/hooks/useNotifications'
+import type { StockNotification } from '@/features/notificacoes/hooks/useNotifications'
 import { getUnitLabel } from '@/app/data/mockData'
 
 interface Props {
+  notifications: StockNotification[]
+  loading: boolean
   onClose: () => void
 }
 
-export function NotificationPanel({ onClose }: Props) {
+export function NotificationPanel({ notifications, loading, onClose }: Props) {
   const navigate = useNavigate()
-  const { notifications, loading } = useNotifications()
 
   return (
     <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden enc-slide-down">

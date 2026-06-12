@@ -1,5 +1,5 @@
 import { Package, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { StatCard } from '../components/StatCard';
 import { StockBadge } from '../components/StockBadge';
 import { MovementTypeBadge } from '../components/MovementTypeBadge';
@@ -35,9 +35,8 @@ function SkeletonCard() {
 }
 
 export function DashboardPage() {
-  const navigate = useNavigate();
   const { stats, loading } = useDashboard();
-  const { isAdmin } = useRole();
+  const { isAdmin, isGestor } = useRole();
 
   return (
     <div className="space-y-5">
@@ -47,22 +46,22 @@ export function DashboardPage() {
         <p className="text-sm text-muted-foreground mt-0.5">Visão geral do armazém ENCIVIL</p>
       </div>
 
-      {isAdmin && (
+      {(isAdmin || isGestor) && (
         <div className="grid grid-cols-2 gap-3 enc-fade-up">
-          <button
-            onClick={() => navigate('/novo-movimento')}
+          <Link
+            to="/novo-movimento?tipo=saida"
             className="flex items-center justify-center gap-2 py-4 bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 active:scale-95 transition-all font-medium shadow-sm"
           >
             <ArrowUpCircle className="w-5 h-5" />
             <span>Registar Saída</span>
-          </button>
-          <button
-            onClick={() => navigate('/novo-movimento')}
+          </Link>
+          <Link
+            to="/novo-movimento?tipo=entrada"
             className="flex items-center justify-center gap-2 py-4 bg-success text-success-foreground rounded-xl hover:bg-success/90 active:scale-95 transition-all font-medium shadow-sm"
           >
             <ArrowDownCircle className="w-5 h-5" />
             <span>Registar Entrada</span>
-          </button>
+          </Link>
         </div>
       )}
 
@@ -167,12 +166,12 @@ export function DashboardPage() {
           )}
 
           <div className="p-4 border-t border-border">
-            <button
-              onClick={() => navigate('/historico')}
+            <Link
+              to="/historico"
               className="text-sm text-primary hover:underline flex items-center gap-1 transition-colors"
             >
               Ver todo o histórico <ChevronRight className="w-4 h-4" />
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -195,10 +194,10 @@ export function DashboardPage() {
             ) : (
               <div className="space-y-3">
                 {stats.lowStockItems.map((p, i) => (
-                  <div
+                  <Link
                     key={p.id}
-                    onClick={() => navigate(`/produtos/${p.id}`)}
-                    className={`p-3 bg-accent/50 rounded-lg border border-border hover:border-primary/50 active:bg-accent transition-all cursor-pointer enc-fade-up delay-${[50,100,150,200][i] ?? 200}`}
+                    to={`/produtos/${p.id}`}
+                    className={`block p-3 bg-accent/50 rounded-lg border border-border hover:border-primary/50 active:bg-accent transition-all enc-fade-up delay-${[50,100,150,200][i] ?? 200}`}
                   >
                     <div className="flex items-start justify-between mb-1">
                       <p className="text-sm font-medium leading-tight flex-1 mr-2">{p.name}</p>
@@ -208,19 +207,19 @@ export function DashboardPage() {
                       <span>Atual: <strong className="text-foreground">{p.currentStock} {getUnitLabel(p.unit)}</strong></span>
                       <span>Mín: <strong className="text-warning">{p.minStock}</strong></span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
           </div>
           {!!stats?.lowStockItems.length && (
             <div className="px-4 pb-4">
-              <button
-                onClick={() => navigate('/produtos')}
+              <Link
+                to="/produtos"
                 className="w-full py-2.5 border border-border rounded-lg text-sm text-foreground hover:bg-accent transition-colors flex items-center justify-center gap-1"
               >
                 Ver todos os produtos <ChevronRight className="w-4 h-4" />
-              </button>
+              </Link>
             </div>
           )}
         </div>

@@ -3,16 +3,19 @@ import { LayoutDashboard, Package, Plus, History, FileBarChart } from 'lucide-re
 import { useRole } from '@/features/auth/useRole';
 
 const navItems = [
-  { path: '/',              label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/produtos',      label: 'Produtos',  icon: Package },
+  { path: '/',               label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/produtos',       label: 'Produtos',  icon: Package },
   { path: '/novo-movimento', label: 'Movimento', icon: Plus, primary: true },
-  { path: '/historico',     label: 'Histórico', icon: History },
-  { path: '/relatorios',    label: 'Relatórios', icon: FileBarChart },
+  { path: '/historico',      label: 'Histórico', icon: History },
+  { path: '/relatorios',     label: 'Relatórios', icon: FileBarChart },
 ];
 
 export function MobileBottomNav() {
   const location = useLocation();
-  const { isAdmin } = useRole();
+  const { isAdmin, isGestor } = useRole();
+
+  // Both admin and gestor can register movements
+  const canRegisterMovement = isAdmin || isGestor;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"
@@ -23,7 +26,10 @@ export function MobileBottomNav() {
           const isActive = location.pathname === item.path;
 
           if (item.primary) {
-            if (!isAdmin) return <div key={item.path} className="w-14" />;
+            if (!canRegisterMovement) {
+              // Placeholder that preserves layout balance
+              return <div key={item.path} className="w-14" />;
+            }
             return (
               <Link
                 key={item.path}
