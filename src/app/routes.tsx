@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { createBrowserRouter, Navigate, useRouteError } from 'react-router';
 
 function RouteErrorPage() {
@@ -6,6 +6,29 @@ function RouteErrorPage() {
   const isChunkError =
     error?.message?.includes('Failed to fetch dynamically imported module') ||
     error?.message?.includes('Importing a module script failed');
+
+  useEffect(() => {
+    if (!isChunkError) return;
+    const GUARD_KEY = 'chunk_reload_ts';
+    const lastReload = Number(sessionStorage.getItem(GUARD_KEY) ?? '0');
+    if (Date.now() - lastReload < 15_000) return;
+    sessionStorage.setItem(GUARD_KEY, String(Date.now()));
+
+    const clearAndReload = async () => {
+      try {
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+      } catch { /* best effort */ }
+      window.location.reload();
+    };
+    void clearAndReload();
+  }, [isChunkError]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
