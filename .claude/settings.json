@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd *)",
+      "PowerShell(Set-Location *)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(npx tsc --noEmit *)",
+      "PowerShell(Start-Sleep *)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(netstat *)",
+      "Bash(npm run test *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Test-Path *)",
+      "PowerShell(dir *)",
+      "PowerShell(docker ps *)"
+    ]
+  }
+}
