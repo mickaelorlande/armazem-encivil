@@ -12,7 +12,28 @@
       "PowerShell(Get-Content *)",
       "PowerShell(Test-Path *)",
       "PowerShell(dir *)",
-      "PowerShell(docker ps *)"
+      "PowerShell(docker ps *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git merge *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)",
+      "Bash(git stash *)",
+      "Bash(npm run build *)",
+      "Bash(npm run dev *)",
+      "Bash(npm install *)",
+      "Bash(npm ci *)",
+      "Bash(npx vite build *)",
+      "Bash(supabase db push *)",
+      "Bash(supabase db query *)",
+      "Bash(supabase db diff *)",
+      "Bash(supabase migration *)",
+      "Bash(vercel *)",
+      "Bash(gh pr *)",
+      "Bash(gh repo *)"
     ]
   }
 }

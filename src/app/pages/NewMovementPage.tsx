@@ -2,14 +2,24 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import {
   ArrowDownCircle, ArrowUpCircle, AlertTriangle,
-  ChevronLeft, ClipboardEdit, ArrowRight,
+  ChevronLeft, ClipboardEdit, ArrowRight, Plus, Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getUnitLabel } from '../data/mockData';
+import { ProductCombobox } from '../components/ProductCombobox';
 import type { MovementType } from '../types';
 import { useProdutos } from '@/features/produtos/hooks/useProdutos';
 import { useRegistarMovimento } from '@/features/movimentos/hooks/useMovimentos';
 import { useRole } from '@/features/auth/useRole';
+
+type Linha = { id: string; productId: string; quantity: string };
+
+function novaLinha(productId = ''): Linha {
+  const id = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return { id, productId, quantity: '' };
+}
 
 export function NewMovementPage() {
   const navigate   = useNavigate();
@@ -30,12 +40,12 @@ export function NewMovementPage() {
   const [showAjuste, setShowAjuste] = useState(paramTipo === 'ajuste');
   const [formData, setFormData] = useState({
     type:        paramTipo,
-    productId:   paramProd,
     quantity:    '',
     responsible: nome,
     destination: '',
     notes:       '',
   });
+  const [linhas, setLinhas] = useState<Linha[]>([novaLinha(paramProd)]);
 
   // Sync responsible field once the profile is loaded (nome may arrive after first render)
   useEffect(() => {
@@ -45,47 +55,97 @@ export function NewMovementPage() {
   const set = (patch: Partial<typeof formData>) =>
     setFormData(prev => ({ ...prev, ...patch }));
 
-  const selectedProduct = products.find(p => p.id === formData.productId);
-
-  const insufficientStock =
-    formData.type === 'saida' &&
-    selectedProduct &&
-    parseFloat(formData.quantity || '0') > selectedProduct.currentStock;
-
-  /* Ajuste: preview em tempo real */
+  /* ── Modo Ajuste (correção de inventário) — sempre um único produto ── */
+  const ajusteProduct = products.find(p => p.id === linhas[0]?.productId);
   const ajusteNew   = formData.type === 'ajuste' && formData.quantity !== ''
     ? parseFloat(formData.quantity)
     : null;
-  const ajusteDelta = ajusteNew !== null && selectedProduct
-    ? ajusteNew - selectedProduct.currentStock
+  const ajusteDelta = ajusteNew !== null && ajusteProduct
+    ? ajusteNew - ajusteProduct.currentStock
     : null;
+
+  const setLinhaProduto = (id: string, productId: string) =>
+    setLinhas(prev => prev.map(l => l.id === id ? { ...l, productId } : l));
+  const setLinhaQuantidade = (id: string, quantity: string) =>
+    setLinhas(prev => prev.map(l => l.id === id ? { ...l, quantity } : l));
+  const adicionarLinha = () => setLinhas(prev => [...prev, novaLinha()]);
+  const removerLinha = (id: string) => setLinhas(prev => prev.length > 1 ? prev.filter(l => l.id !== id) : prev);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.productId) { toast.error('Selecione um produto.'); return; }
-    if (insufficientStock) {
-      toast.error(`Stock insuficiente! Disponível: ${selectedProduct!.currentStock} ${getUnitLabel(selectedProduct!.unit)}`);
-      return;
-    }
-    if (formData.type === 'ajuste' && !formData.notes.trim()) {
-      toast.error('Indique o motivo da correção de inventário.');
+
+    /* ── Submissão: correção de inventário (sempre 1 produto) ── */
+    if (formData.type === 'ajuste') {
+      const produtoId = linhas[0]?.productId;
+      if (!produtoId) { toast.error('Selecione um produto.'); return; }
+      if (!formData.notes.trim()) { toast.error('Indique o motivo da correção de inventário.'); return; }
+
+      const result = await registar({
+        produtoId,
+        tipo: 'ajuste',
+        quantidade: parseFloat(formData.quantity),
+        responsavel: formData.responsible,
+        observacoes: formData.notes || undefined,
+      });
+
+      if (result.status === 'ok') {
+        toast.success('Correção registada com sucesso!');
+        setTimeout(() => navigate(-1), 1000);
+      } else if (result.status === 'queued') {
+        toast.success('Sem ligação — correção guardada e será enviada automaticamente.');
+        setTimeout(() => navigate(-1), 1000);
+      } else {
+        toast.error(result.message);
+      }
       return;
     }
 
-    const ok = await registar({
-      produtoId:    formData.productId,
-      tipo:         formData.type as MovementType,
-      quantidade:   parseFloat(formData.quantity),
-      responsavel:  formData.responsible,
-      destinoObra:  formData.type !== 'ajuste' ? (formData.destination || undefined) : undefined,
-      observacoes:  formData.notes || undefined,
-    });
+    /* ── Submissão: entrada/saída — um ou vários produtos ── */
+    const validas = linhas.filter(l => l.productId && parseFloat(l.quantity || '0') > 0);
+    if (validas.length === 0) { toast.error('Adicione pelo menos um produto com quantidade.'); return; }
+    if (formData.type === 'saida' && !formData.destination.trim()) { toast.error('Indique o destino / obra.'); return; }
 
-    if (ok) {
-      toast.success('Movimento registado com sucesso!');
+    if (formData.type === 'saida') {
+      for (const l of validas) {
+        const p = products.find(pp => pp.id === l.productId);
+        const qtd = parseFloat(l.quantity);
+        if (p && qtd > p.currentStock) {
+          toast.error(`Stock insuficiente para "${p.name}". Disponível: ${p.currentStock} ${getUnitLabel(p.unit)}`);
+          return;
+        }
+      }
+    }
+
+    let okCount = 0;
+    let queuedCount = 0;
+    const falhas: Linha[] = [];
+
+    for (const l of validas) {
+      const result = await registar({
+        produtoId:    l.productId,
+        tipo:         formData.type as MovementType,
+        quantidade:   parseFloat(l.quantity),
+        responsavel:  formData.responsible,
+        destinoObra:  formData.destination || undefined,
+        observacoes:  formData.notes || undefined,
+      });
+      if (result.status === 'ok') okCount++;
+      else if (result.status === 'queued') queuedCount++;
+      else {
+        toast.error(`${products.find(p => p.id === l.productId)?.name ?? 'Produto'}: ${result.message}`);
+        falhas.push(l);
+      }
+    }
+
+    if (falhas.length === 0) {
+      const partes: string[] = [];
+      if (okCount > 0) partes.push(`${okCount} movimento${okCount !== 1 ? 's' : ''} registado${okCount !== 1 ? 's' : ''}`);
+      if (queuedCount > 0) partes.push(`${queuedCount} guardado${queuedCount !== 1 ? 's' : ''} sem ligação (será${queuedCount !== 1 ? 'ão' : ''} enviado${queuedCount !== 1 ? 's' : ''} automaticamente)`);
+      toast.success(partes.join(' · ') + '.');
       setTimeout(() => navigate(-1), 1000);
     } else {
-      toast.error('Erro ao registar. Verifique o stock disponível.');
+      // Mantém apenas as linhas que falharam, para o utilizador corrigir e tentar de novo
+      setLinhas(falhas);
     }
   };
 
@@ -96,6 +156,13 @@ export function NewMovementPage() {
     formData.type === 'saida'   ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' :
     formData.type === 'entrada' ? 'bg-success text-success-foreground hover:bg-success/90' :
                                   'bg-warning text-white hover:bg-warning/90';
+
+  const usadosIds = linhas.map(l => l.productId);
+
+  const algumaInsuficiente = formData.type === 'saida' && linhas.some(l => {
+    const p = products.find(pp => pp.id === l.productId);
+    return p && parseFloat(l.quantity || '0') > p.currentStock;
+  });
 
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-28">
@@ -164,7 +231,7 @@ export function NewMovementPage() {
             {/* Link discreto para correção de inventário */}
             <button
               type="button"
-              onClick={() => { setShowAjuste(true); set({ type: 'ajuste', destination: '' }); }}
+              onClick={() => { setShowAjuste(true); set({ type: 'ajuste', destination: '' }); setLinhas([novaLinha(linhas[0]?.productId)]); }}
               className="mt-3 w-full text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 py-2.5 rounded-xl hover:bg-accent transition-colors border border-dashed border-border"
             >
               <ClipboardEdit className="w-3.5 h-3.5" />
@@ -197,119 +264,189 @@ export function NewMovementPage() {
           </div>
         )}
 
-        {/* ── Produto + Quantidade ────────────────── */}
-        <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
-
-          {/* Seletor de produto */}
-          <div>
-            <label className="block text-sm font-medium mb-2">Produto</label>
-            <select
-              value={formData.productId}
-              onChange={e => set({ productId: e.target.value })}
-              className={inputCls}
-              required
-              disabled={productsLoading}
-            >
-              <option value="">{productsLoading ? 'A carregar…' : 'Selecione um produto'}</option>
-              {products.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — {p.currentStock} {getUnitLabel(p.unit)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Info do produto selecionado */}
-          {selectedProduct && (
-            <div className="grid grid-cols-3 gap-2 p-3 bg-accent/50 rounded-xl text-center">
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Stock Atual</p>
-                <p className={`text-xl font-bold mt-0.5 ${
-                  selectedProduct.status === 'sem-stock' ? 'text-destructive' :
-                  selectedProduct.status === 'baixo'     ? 'text-warning'     : 'text-foreground'
-                }`}>
-                  {selectedProduct.currentStock}
-                </p>
-                <p className="text-[10px] text-muted-foreground">{getUnitLabel(selectedProduct.unit)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Mínimo</p>
-                <p className="text-xl font-bold mt-0.5 text-warning">{selectedProduct.minStock}</p>
-                <p className="text-[10px] text-muted-foreground">{getUnitLabel(selectedProduct.unit)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Unidade</p>
-                <p className="text-lg font-bold mt-1">{getUnitLabel(selectedProduct.unit)}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Quantidade / Novo Stock */}
-          <div>
-            <div className="flex items-baseline justify-between mb-2">
-              <label className="text-sm font-medium">
-                {formData.type === 'ajuste' ? 'Novo Stock Real' : 'Quantidade'}
-              </label>
-              {formData.type === 'ajuste' && selectedProduct && (
-                <span className="text-xs text-muted-foreground">
-                  Actual: <strong>{selectedProduct.currentStock} {getUnitLabel(selectedProduct.unit)}</strong>
-                </span>
-              )}
+        {/* ── Modo Ajuste: produto + novo stock (sempre 1 produto) ── */}
+        {formData.type === 'ajuste' && (
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Produto</label>
+              <ProductCombobox
+                products={products}
+                value={linhas[0]?.productId ?? ''}
+                onChange={id => setLinhaProduto(linhas[0].id, id)}
+                loading={productsLoading}
+              />
             </div>
 
-            <input
-              type="number"
-              value={formData.quantity}
-              onChange={e => set({ quantity: e.target.value })}
-              className={`${inputCls} text-2xl font-bold text-center`}
-              placeholder="0"
-              min="0"
-              step="0.01"
-              required
-              inputMode="decimal"
-            />
-
-            {/* Preview ao vivo do ajuste */}
-            {formData.type === 'ajuste' && ajusteNew !== null && selectedProduct && (
-              <div className={`mt-2 p-3 rounded-xl border flex items-center justify-center gap-2.5 ${
-                ajusteDelta === 0
-                  ? 'bg-muted/30 border-border'
-                  : ajusteDelta! > 0
-                  ? 'bg-success/10 border-success/20'
-                  : 'bg-destructive/10 border-destructive/20'
-              }`}>
-                <span className="text-base font-semibold text-muted-foreground">
-                  {selectedProduct.currentStock}
-                </span>
-                <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                <span className={`text-base font-bold ${
-                  ajusteDelta === 0 ? 'text-foreground' :
-                  ajusteDelta! > 0 ? 'text-success' : 'text-destructive'
-                }`}>
-                  {ajusteNew}
-                </span>
-                <span className="text-xs text-muted-foreground">{getUnitLabel(selectedProduct.unit)}</span>
-                {ajusteDelta !== 0 && (
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    ajusteDelta! > 0 ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
+            {ajusteProduct && (
+              <div className="grid grid-cols-3 gap-2 p-3 bg-accent/50 rounded-xl text-center">
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Stock Atual</p>
+                  <p className={`text-xl font-bold mt-0.5 ${
+                    ajusteProduct.status === 'sem-stock' ? 'text-destructive' :
+                    ajusteProduct.status === 'baixo'     ? 'text-warning'     : 'text-foreground'
                   }`}>
-                    {ajusteDelta! > 0 ? '+' : ''}{ajusteDelta}
+                    {ajusteProduct.currentStock}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{getUnitLabel(ajusteProduct.unit)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Mínimo</p>
+                  <p className="text-xl font-bold mt-0.5 text-warning">{ajusteProduct.minStock}</p>
+                  <p className="text-[10px] text-muted-foreground">{getUnitLabel(ajusteProduct.unit)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Unidade</p>
+                  <p className="text-lg font-bold mt-1">{getUnitLabel(ajusteProduct.unit)}</p>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div className="flex items-baseline justify-between mb-2">
+                <label className="text-sm font-medium">Novo Stock Real</label>
+                {ajusteProduct && (
+                  <span className="text-xs text-muted-foreground">
+                    Actual: <strong>{ajusteProduct.currentStock} {getUnitLabel(ajusteProduct.unit)}</strong>
                   </span>
                 )}
               </div>
-            )}
 
-            {/* Aviso stock insuficiente */}
-            {insufficientStock && (
-              <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-2">
-                <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-                <p className="text-sm text-destructive">
-                  Stock insuficiente! Disponível: {selectedProduct?.currentStock} {selectedProduct && getUnitLabel(selectedProduct.unit)}
-                </p>
-              </div>
-            )}
+              <input
+                type="number"
+                value={formData.quantity}
+                onChange={e => set({ quantity: e.target.value })}
+                className={`${inputCls} text-2xl font-bold text-center`}
+                placeholder="0"
+                min="0"
+                step="0.01"
+                required
+                inputMode="decimal"
+              />
+
+              {ajusteNew !== null && ajusteProduct && (
+                <div className={`mt-2 p-3 rounded-xl border flex items-center justify-center gap-2.5 ${
+                  ajusteDelta === 0
+                    ? 'bg-muted/30 border-border'
+                    : ajusteDelta! > 0
+                    ? 'bg-success/10 border-success/20'
+                    : 'bg-destructive/10 border-destructive/20'
+                }`}>
+                  <span className="text-base font-semibold text-muted-foreground">
+                    {ajusteProduct.currentStock}
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className={`text-base font-bold ${
+                    ajusteDelta === 0 ? 'text-foreground' :
+                    ajusteDelta! > 0 ? 'text-success' : 'text-destructive'
+                  }`}>
+                    {ajusteNew}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{getUnitLabel(ajusteProduct.unit)}</span>
+                  {ajusteDelta !== 0 && (
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      ajusteDelta! > 0 ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
+                    }`}>
+                      {ajusteDelta! > 0 ? '+' : ''}{ajusteDelta}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* ── Modo Entrada/Saída: lista de produtos ──────── */}
+        {formData.type !== 'ajuste' && (
+          <div className="space-y-3">
+            {linhas.map((linha, idx) => {
+              const produto = products.find(p => p.id === linha.productId);
+              const qtd = parseFloat(linha.quantity || '0');
+              const insuficiente = formData.type === 'saida' && produto && qtd > produto.currentStock;
+
+              return (
+                <div key={linha.id} className="bg-card rounded-2xl border border-border p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium">Produto {linhas.length > 1 ? `#${idx + 1}` : ''}</label>
+                    {linhas.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removerLinha(linha.id)}
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                        aria-label="Remover produto"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  <ProductCombobox
+                    products={products}
+                    value={linha.productId}
+                    onChange={id => setLinhaProduto(linha.id, id)}
+                    excludeIds={usadosIds}
+                    loading={productsLoading}
+                  />
+
+                  {produto && (
+                    <div className="grid grid-cols-3 gap-2 p-3 bg-accent/50 rounded-xl text-center">
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Stock Atual</p>
+                        <p className={`text-xl font-bold mt-0.5 ${
+                          produto.status === 'sem-stock' ? 'text-destructive' :
+                          produto.status === 'baixo'     ? 'text-warning'     : 'text-foreground'
+                        }`}>
+                          {produto.currentStock}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">{getUnitLabel(produto.unit)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Mínimo</p>
+                        <p className="text-xl font-bold mt-0.5 text-warning">{produto.minStock}</p>
+                        <p className="text-[10px] text-muted-foreground">{getUnitLabel(produto.unit)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Unidade</p>
+                        <p className="text-lg font-bold mt-1">{getUnitLabel(produto.unit)}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Quantidade</label>
+                    <input
+                      type="number"
+                      value={linha.quantity}
+                      onChange={e => setLinhaQuantidade(linha.id, e.target.value)}
+                      className={`${inputCls} text-2xl font-bold text-center`}
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      required
+                      inputMode="decimal"
+                    />
+                    {insuficiente && (
+                      <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-2">
+                        <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                        <p className="text-sm text-destructive">
+                          Stock insuficiente! Disponível: {produto?.currentStock} {produto && getUnitLabel(produto.unit)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={adicionarLinha}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Adicionar outro produto
+            </button>
+          </div>
+        )}
 
         {/* ── Campos adicionais ───────────────────── */}
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
@@ -370,14 +507,14 @@ export function NewMovementPage() {
           <div className="flex gap-3">
             <button
               type="submit"
-              disabled={!!insufficientStock || saving}
+              disabled={saving || algumaInsuficiente}
               className={`flex-1 py-4 rounded-xl font-bold text-base active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md ${submitCls}`}
             >
               {saving
                 ? 'A guardar…'
                 : formData.type === 'ajuste'
                 ? 'Confirmar Correção'
-                : `Guardar ${formData.type === 'entrada' ? 'Entrada' : 'Saída'}`}
+                : `Guardar ${formData.type === 'entrada' ? 'Entrada' : 'Saída'}${linhas.length > 1 ? 's' : ''}`}
             </button>
             <button
               type="button"

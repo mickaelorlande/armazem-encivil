@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
-import { History, ArrowDownCircle, ArrowUpCircle, LayoutList, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { History, ArrowDownCircle, ArrowUpCircle, LayoutList, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { MovementTypeBadge } from '../components/MovementTypeBadge';
 import { EmptyState } from '../components/EmptyState';
 import { getUnitLabel } from '../data/mockData';
@@ -31,11 +31,13 @@ export function HistoryPage() {
 
   const [filterType,   setFilterType]   = useState<TypeFilter>('todos');
   const [filterPeriod, setFilterPeriod] = useState<PeriodFilter>('todos');
+  const [filterDestino, setFilterDestino] = useState('');
 
   const filtros = useMemo((): FiltrosMovimentos => {
     const f: FiltrosMovimentos = {}
     if (produtoParam) f.produtoId = produtoParam
     if (filterType !== 'todos') f.tipo = filterType as MovementType
+    if (filterDestino.trim()) f.destino = filterDestino.trim()
     if (filterPeriod === 'hoje') {
       const d = new Date(); d.setHours(0, 0, 0, 0); f.dataInicio = d
     } else if (filterPeriod === 'semana') {
@@ -44,10 +46,10 @@ export function HistoryPage() {
       const d = new Date(); d.setMonth(d.getMonth() - 1); f.dataInicio = d
     }
     return f
-  }, [produtoParam, filterType, filterPeriod])
+  }, [produtoParam, filterType, filterPeriod, filterDestino])
 
   const { movements, count, page, totalPages, loading, setPage } = useMovimentosPaginados(filtros);
-  const hasFilter = filterType !== 'todos' || filterPeriod !== 'todos';
+  const hasFilter = filterType !== 'todos' || filterPeriod !== 'todos' || filterDestino.trim() !== '';
 
   const selectCls = 'px-3 py-2.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm w-full';
 
@@ -85,7 +87,7 @@ export function HistoryPage() {
           {hasFilter && (
             <div className="flex items-end">
               <button
-                onClick={() => { setFilterType('todos'); setFilterPeriod('todos'); }}
+                onClick={() => { setFilterType('todos'); setFilterPeriod('todos'); setFilterDestino(''); }}
                 className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-xl transition-colors border border-border w-full sm:w-auto justify-center"
               >
                 <X className="w-3.5 h-3.5" />
@@ -93,6 +95,20 @@ export function HistoryPage() {
               </button>
             </div>
           )}
+        </div>
+
+        <div className="mt-3">
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Destino / Obra</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={filterDestino}
+              onChange={e => setFilterDestino(e.target.value)}
+              placeholder="Pesquisar por destino ou obra…"
+              className="w-full pl-9 pr-3 py-2.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+            />
+          </div>
         </div>
 
         {/* Atalhos rápidos de tipo */}

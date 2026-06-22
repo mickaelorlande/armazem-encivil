@@ -44,7 +44,16 @@ export function useNotifications() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const interval = setInterval(load, 60_000)
+    const onFocus = () => load()
+    window.addEventListener('focus', onFocus)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [load])
 
   return { notifications: items, count: items.length, loading, reload: load }
 }

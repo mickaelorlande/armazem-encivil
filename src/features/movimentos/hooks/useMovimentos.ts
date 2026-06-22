@@ -8,6 +8,7 @@ import {
   type FiltrosMovimentos,
   type RegistarMovimentoInput,
 } from '../services/movimentosService'
+import { enqueuePendingMovimento, isNetworkError, friendlyErrorMessage } from '../offlineQueue'
 
 export function useMovimentos(filtros: FiltrosMovimentos = {}) {
   const [movements, setMovements] = useState<Movement[]>([])
@@ -83,20 +84,33 @@ export function useMovimentosPaginados(filtros: FiltrosMovimentos = {}) {
   }
 }
 
+export type RegistarResultado =
+  | { status: 'ok' }
+  | { status: 'queued' }
+  | { status: 'error'; message: string }
+
 export function useRegistarMovimento() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const registar = async (input: RegistarMovimentoInput): Promise<boolean> => {
+  const registar = async (input: RegistarMovimentoInput): Promise<RegistarResultado> => {
     setLoading(true)
     setError(null)
     try {
+      if (!navigator.onLine) {
+        enqueuePendingMovimento(input)
+        return { status: 'queued' }
+      }
       await registarMovimento(input)
-      return true
+      return { status: 'ok' }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erro ao registar movimento'
+      if (isNetworkError(e)) {
+        enqueuePendingMovimento(input)
+        return { status: 'queued' }
+      }
+      const msg = friendlyErrorMessage(e)
       setError(msg)
-      return false
+      return { status: 'error', message: msg }
     } finally {
       setLoading(false)
     }

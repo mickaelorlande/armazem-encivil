@@ -39,6 +39,7 @@ export type FiltrosMovimentos = {
   tipo?: MovementType
   dataInicio?: Date
   dataFim?: Date
+  destino?: string
   limit?: number
   offset?: number
 }
@@ -59,6 +60,7 @@ export async function listarMovimentos(filtros: FiltrosMovimentos = {}): Promise
     fim.setDate(fim.getDate() + 1)
     query = query.lt('created_at', fim.toISOString())
   }
+  if (filtros.destino)    query = query.ilike('destino_obra', `%${filtros.destino}%`)
   if (filtros.limit)  query = query.limit(filtros.limit)
   if (filtros.offset) query = query.range(filtros.offset, filtros.offset + (filtros.limit ?? 20) - 1)
 
@@ -88,6 +90,7 @@ export async function listarMovimentosPaginados(
     fim.setDate(fim.getDate() + 1)
     query = query.lt('created_at', fim.toISOString())
   }
+  if (filtros.destino)    query = query.ilike('destino_obra', `%${filtros.destino}%`)
 
   const { data, error, count } = await query
   if (error) throw error
