@@ -55,8 +55,9 @@ export async function buscarProduto(id: string): Promise<Product> {
   return toProduct(data as ProdutoRow)
 }
 
+// 'code' nunca aparece aqui — código é gerado automaticamente pela coluna
+// (DEFAULT com nextval) no momento do INSERT, e é imutável após criação.
 export type NovoProduto = {
-  code: string
   name: string
   category: ProductCategory
   unit: Unit
@@ -69,7 +70,6 @@ export async function criarProduto(input: NovoProduto): Promise<Product> {
   const { data, error } = await supabase
     .from('produtos')
     .insert({
-      codigo: input.code,
       nome: input.name,
       categoria: input.category,
       unidade: input.unit,
@@ -83,8 +83,7 @@ export async function criarProduto(input: NovoProduto): Promise<Product> {
   return toProduct(data as ProdutoRow)
 }
 
-// 'code' nunca aparece aqui — código é gerado automaticamente e imutável após criação
-export type AtualizarProduto = Partial<Omit<NovoProduto, 'code'>>
+export type AtualizarProduto = Partial<NovoProduto>
 
 export async function atualizarProduto(id: string, input: AtualizarProduto): Promise<Product> {
   const update: Record<string, unknown> = {}

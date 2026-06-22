@@ -326,15 +326,17 @@ export function ProductsPage() {
 function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { criar, loading } = useCriarProduto();
   const [formData, setFormData] = useState({
-    name: '', code: '', category: 'outro' as ProductCategory, unit: 'unidade' as Unit,
+    name: '', category: 'outro' as ProductCategory, unit: 'unidade' as Unit,
     initialStock: '', minStock: '', notes: '',
   });
+  const [codigoPreview, setCodigoPreview] = useState('');
   const [gerandoCodigo, setGerandoCodigo] = useState(true);
 
-  // Código é sempre gerado automaticamente pela sequência da DB — nunca digitado pelo utilizador
+  // Pré-visualização apenas — não consome a sequência. O código real é
+  // atribuído pela coluna DEFAULT da DB só quando o produto é criado.
   useEffect(() => {
     supabase.rpc('gerar_codigo_produto').then(({ data }) => {
-      if (data) setFormData(prev => ({ ...prev, code: data }));
+      if (data) setCodigoPreview(data);
       setGerandoCodigo(false);
     });
   }, []);
@@ -342,7 +344,6 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = await criar({
-      code:         formData.code,
       name:         formData.name,
       category:     formData.category,
       unit:         formData.unit,
@@ -373,7 +374,7 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               <label className="block text-sm font-medium mb-2">Código <span className="text-muted-foreground font-normal text-xs">(gerado automaticamente)</span></label>
               <input
                 type="text"
-                value={gerandoCodigo ? 'A gerar…' : formData.code}
+                value={gerandoCodigo ? 'A gerar…' : codigoPreview}
                 readOnly
                 disabled
                 className={`${inputCls} bg-muted text-muted-foreground cursor-not-allowed`}
