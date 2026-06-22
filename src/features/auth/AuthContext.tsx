@@ -1,7 +1,13 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
+import { toast } from 'sonner'
 import { supabase } from '@/integrations/supabase/client'
 import type { RoleUtilizador } from '@/integrations/supabase/types'
+
+// Sem MFA disponível no plano atual, a sessão expira após inatividade —
+// reduz o risco de um telemóvel/laptop desbloqueado ficar logado indefinidamente.
+const INACTIVITY_LIMIT_MS = 30 * 60 * 1000 // 30 minutos
+const ACTIVITY_EVENTS = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'] as const
 
 interface Profile {
   role: RoleUtilizador
@@ -57,6 +63,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Auto-logout por inatividade — só ativo enquanto há sessão.
+  const sessionRef = useRef(session)
+  sessionRef.current = session
+  useEffect(() => {
+    if (!session) return
+
+    let timer: ReturnType<typeof setTimeout>
+
+    const handleTimeout = () => {
+      if (!sessionRef.current) return
+      toast.info('Sessão terminada por inatividade. Inicie sessão de novo.')
+      supabase.auth.signOut()
+    }
+
+    const resetTimer = () => {
+      clearTimeout(timer)
+      timer = setTimeout(handleTimeout, INACTIVITY_LIMIT_MS)
+    }
+
+    ACTIVITY_EVENTS.forEach(evt => window.addEventListener(evt, resetTimer, { passive: true }))
+    resetTimer()
+
+    return () => {
+      clearTimeout(timer)
+      ACTIVITY_EVENTS.forEach(evt => window.removeEventListener(evt, resetTimer))
+    }
+  }, [session])
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
