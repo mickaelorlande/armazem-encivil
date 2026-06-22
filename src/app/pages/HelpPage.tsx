@@ -100,6 +100,22 @@ const guides: Guide[] = [
     ],
     tip: 'Após instalar, a app abre sem barra de URL — idêntica a uma app nativa.',
   },
+  {
+    id: 'android',
+    icon: Smartphone,
+    title: 'Instalar no Android',
+    subtitle: 'Aceder como app nativa, sem Play Store',
+    color: 'bg-success/10',
+    iconColor: 'text-success',
+    borderColor: 'border-l-success',
+    steps: [
+      { text: 'Abra este sistema no  Chrome', note: 'Outros browsers Android também podem suportar, mas o Chrome é o mais fiável' },
+      { text: 'Toque no menu  ⋮  (três pontos) no canto superior direito' },
+      { text: 'Selecione  Instalar aplicação  ou  Adicionar ao ecrã principal' },
+      { text: 'Confirme tocando em  Instalar' },
+    ],
+    tip: 'O Chrome também pode mostrar um banner automático "Instalar app" — basta tocar nele.',
+  },
 ];
 
 /* ─── Componente de card de guia ─────────────────────── */
