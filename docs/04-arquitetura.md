@@ -4,7 +4,7 @@
 
 ## Visão Geral
 
-Arquitetura frontend-only (SPA) com backend gerido pelo Supabase. Sem servidor dedicado.
+Arquitetura frontend-only (SPA + PWA) com backend gerido pelo Supabase. Sem servidor dedicado. Bundle único (sem code-splitting por rota — ver ADR-008), service worker via Workbox para instalação como PWA e cache de assets estáticos.
 
 ```
 ┌─────────────────────────────────────────┐
@@ -56,88 +56,51 @@ Arquitetura frontend-only (SPA) com backend gerido pelo Supabase. Sem servidor d
 
 ---
 
-## Organização do Código
+## Organização do Código (atual — ver `PROJECT_STRUCTURE.md` para o detalhe completo)
 
 ```
 src/
-├── app/                          # Camada de aplicação
-│   ├── App.tsx                   # Ponto de entrada React
-│   ├── routes.tsx                # Definição de rotas
-│   ├── types.ts                  # Tipos partilhados da app
-│   ├── layouts/
-│   │   └── MainLayout.tsx        # Layout com sidebar + header
-│   ├── pages/                    # Páginas / rotas
-│   │   ├── LoginPage.tsx
-│   │   ├── DashboardPage.tsx
-│   │   ├── ProductsPage.tsx
-│   │   ├── ProductDetailPage.tsx
-│   │   ├── NewMovementPage.tsx
-│   │   ├── HistoryPage.tsx
-│   │   ├── ReportsPage.tsx
-│   │   ├── SettingsPage.tsx
-│   │   └── DocsPage.tsx
-│   ├── components/               # Componentes de UI reutilizáveis
-│   │   ├── ui/                   # Primitivos (shadcn/ui + Radix)
-│   │   ├── Sidebar.tsx
-│   │   ├── Header.tsx
-│   │   ├── StatCard.tsx
-│   │   ├── StockBadge.tsx
-│   │   └── MovementTypeBadge.tsx
-│   └── data/
-│       └── mockData.ts           # Dados mock (substituir por Supabase)
+├── app/
+│   ├── App.tsx                   # AuthProvider + RouterProvider
+│   ├── routes.tsx                # Rotas — bundle único, sem lazy() (ADR-008)
+│   ├── types.ts                  # Product, Movement, DashboardStats, LowStockItem
+│   ├── layouts/MainLayout.tsx    # Sidebar (desktop) + MobileBottomNav + Header
+│   ├── pages/                    # 11 páginas (Login, Dashboard, Produtos, ProdutoDetalhe,
+│   │                              # NovoMovimento, Histórico, Relatórios, Configurações,
+│   │                              # Docs, Ajuda, NotFound)
+│   ├── components/
+│   │   ├── ui/                   # shadcn/ui + Radix
+│   │   ├── Header.tsx            # Nome real + role do utilizador (useRole, não email)
+│   │   ├── NotificationPanel.tsx # Recebe dados via props — não faz query própria
+│   │   ├── MobileBottomNav.tsx
+│   │   ├── PWAInstallHint.tsx
+│   │   └── StatCard.tsx          # useCountUp + skeleton
+│   └── data/mockData.ts          # Só helpers de label (getCategoryLabel/getUnitLabel) — sem dados mock
 │
 ├── features/                     # Lógica de negócio por módulo
 │   ├── auth/
-│   │   ├── hooks/
-│   │   │   └── useAuth.ts        # Hook de autenticação
-│   │   └── services/
-│   │       └── authService.ts    # Login, logout, sessão
-│   ├── produtos/
-│   │   ├── components/           # Componentes específicos de produtos
-│   │   ├── hooks/
-│   │   │   └── useProdutos.ts
-│   │   ├── services/
-│   │   │   └── produtosService.ts  # CRUD produtos
-│   │   └── types.ts
-│   ├── movimentos/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   │   └── useMovimentos.ts
-│   │   ├── services/
-│   │   │   └── movimentosService.ts  # Registar entrada/saída/ajuste
-│   │   └── types.ts
-│   ├── relatorios/
-│   │   ├── services/
-│   │   │   └── relatoriosService.ts  # Queries de relatórios
-│   │   └── types.ts
-│   └── configuracoes/
-│       └── services/
-│           └── configuracoesService.ts
+│   │   ├── AuthContext.tsx       # session + profile (role, nome); auto-logout 30min
+│   │   ├── AuthGuard.tsx         # Bloqueia sem sessão
+│   │   ├── RoleGuard.tsx         # Bloqueia sem role suficiente
+│   │   └── useRole.ts            # Lê do context — zero queries extra
+│   ├── produtos/{hooks,services}/
+│   ├── movimentos/{hooks,services}/   # useMovimentos + useMovimentosPaginados
+│   ├── dashboard/hooks/useDashboard.ts
+│   ├── notificacoes/hooks/useNotifications.ts
+│   └── configuracoes/services/
 │
-├── integrations/
-│   └── supabase/
-│       ├── client.ts             # Inicialização do cliente Supabase
-│       ├── types.ts              # Tipos gerados (supabase gen types)
-│       └── queries/              # Queries SQL reutilizáveis
-│           ├── produtos.ts
-│           ├── movimentos.ts
-│           └── relatorios.ts
+├── integrations/supabase/
+│   ├── client.ts                 # Cliente com anon key apenas
+│   └── types.ts                  # RoleUtilizador = 'admin' | 'gestor'
 │
-├── shared/
-│   ├── hooks/
-│   │   └── useDebounce.ts
-│   └── components/
-│       └── LoadingSpinner.tsx
+├── hooks/useCountUp.ts           # Compartilhado fora de features/
 │
-├── utils/
-│   ├── date.ts                   # Formatação de datas (Europe/Lisbon)
-│   ├── stock.ts                  # Cálculos de stock
-│   └── format.ts                 # Formatação de números e textos
-│
-└── styles/
-    ├── theme.css                 # Tokens de design ENCIVIL
-    └── fonts.css                 # Importações de fontes
+└── styles/index.css              # Tailwind v4 @theme
+
+supabase/migrations/              # 10 migrations, todas aplicadas — fonte de verdade do schema
 ```
+
+**Diferenças relevantes face ao plano original:** sem `integrations/supabase/queries/` (queries inline nos services), sem `shared/` (hooks pequenos foram para `src/hooks/`), sem `utils/date.ts`/`utils/stock.ts` separados (lógica de stock vive na RPC `registar_movimento`, não no frontend).
 
 ---
 

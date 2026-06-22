@@ -33,10 +33,13 @@ Este ficheiro orienta Claude Agents, Codex e outros agents de IA a contribuir co
 - ❌ Não criar sistema de ecommerce, pagamentos ou faturação
 - ❌ Não apagar registos de `movimentos_stock` — nem mesmo para "corrigir"
 - ❌ Não editar `stock_atual` diretamente — apenas via movimentos
-- ❌ Não colocar `service_role` key no frontend (Vite)
+- ❌ Não colocar `service-role` key no frontend (Vite)
 - ❌ Não misturar regra de negócio dentro de componentes visuais
 - ❌ Não criar ecrãs ou funcionalidades de Fase 2/3 quando a tarefa é de MVP
 - ❌ Não alterar a estrutura da base de dados sem criar uma migration SQL
+- ❌ Não fazer `UPDATE profiles SET role = ...` direto — está bloqueado por GRANT a nível de coluna; usar sempre a RPC `promover_role()`
+- ❌ Não usar `lazy()`/code-splitting por rota em `routes.tsx` — foi removido deliberadamente (ADR-008, elimina "stale chunk" pós-deploy)
+- ❌ Não confiar só no frontend (`RoleGuard`, esconder botões) para restringir acesso — a defesa real é RLS/GRANT na DB; toda nova funcionalidade sensível precisa de policy ou RPC com verificação de role no servidor
 
 ---
 
@@ -72,8 +75,9 @@ docs/
     SPEC-RELATORIOS.md
     SPEC-CONFIGURACOES.md
   adrs/
-    ADR-001.md a ADR-006.md
-TASKS.md                  ← Backlog de tarefas
+    ADR-001.md a ADR-008.md
+TASKS/                     ← Backlog ativo (SEGURANÇA / UX / PERFORMANCE, cada uma com backlog/ e done/)
+TASKS.md                   ← Obsoleto, só histórico — aponta para TASKS/
 ```
 
 ---
@@ -135,3 +139,12 @@ Não. Apenas no histórico.
 
 **Destino/obra é obrigatório sempre?**  
 Apenas em saídas. Opcional em entradas e ajustes.
+
+**Posso promover um utilizador a admin?**  
+Só via RPC `promover_role()`, autenticado como um admin existente. Nunca por `UPDATE` direto na tabela `profiles` — está bloqueado por GRANT a nível de coluna desde 2026-06-22.
+
+**Um gestor pode criar/editar produtos?**  
+Não. Só `admin`. RLS bloqueia mesmo que o frontend não escondesse o botão.
+
+**Devo usar `lazy()` para uma nova página?**  
+Não. O projeto usa bundle único deliberadamente (ver `docs/adrs/ADR-008.md`) — importar a página diretamente em `routes.tsx`.

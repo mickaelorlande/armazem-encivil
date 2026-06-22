@@ -33,6 +33,7 @@ Permitir o registo rápido de entradas, saídas e ajustes de stock, com validaç
 - RN-AJU-01 a RN-AJU-04 (ajustes)
 - RN-STOCK-01 a RN-STOCK-03 (stock)
 - RN-DATA-01 a RN-DATA-03 (data/hora)
+- **Permissão:** `admin` e `gestor` podem registar movimentos (RLS `movimentos_insert_admin_gestor` + verificação de role dentro da RPC `registar_movimento`). `responsavel` é pré-preenchido com o nome do utilizador autenticado (`useRole().nome`), mas continua editável como texto livre.
 
 ---
 

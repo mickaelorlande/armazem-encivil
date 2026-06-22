@@ -18,10 +18,23 @@ Garantir que apenas utilizadores autorizados acedem ao sistema, com sessão segu
 
 ## Fora de Escopo
 
-- Registo de novos utilizadores (admin cria manualmente via Supabase)
-- Recuperação de palavra-passe via e-mail (MVP)
+- Registo público de novos utilizadores (contas criadas via convite no Supabase Dashboard)
+- Recuperação de palavra-passe via e-mail (ainda manual)
 - Autenticação social (Google, Microsoft, etc.)
-- 2FA (Fase 2)
+- MFA — indisponível no plano Supabase atual (requer Pro); compensado por auto-logout
+
+---
+
+## Modelo de Roles
+
+Dois roles, aplicados via RLS + GRANTs na DB (não apenas frontend):
+
+| Role | Acesso |
+|---|---|
+| `admin` | Tudo, incl. CRUD produtos, configurações, promover roles |
+| `gestor` | Dashboard, produtos (leitura), histórico, relatórios, registar movimentos. Sem configurações/CRUD produtos |
+
+Role + nome carregados uma única vez no login via `AuthContext` (`fetchProfile`), expostos por `useRole()` sem queries adicionais. Mudar de role exige a RPC `promover_role()` — `UPDATE` direto na coluna `role` está bloqueado por GRANT (ver `docs/05-seguranca-e-acesso.md`).
 
 ---
 
@@ -30,8 +43,10 @@ Garantir que apenas utilizadores autorizados acedem ao sistema, com sessão segu
 - RN-AUTH-01: E-mail e palavra-passe são obrigatórios
 - RN-AUTH-02: Credenciais inválidas devem mostrar mensagem de erro (sem revelar qual campo está errado)
 - RN-AUTH-03: Sessão válida enquanto token JWT não expirar (padrão Supabase: 1 hora, com refresh automático)
-- RN-AUTH-04: Qualquer rota além de `/login` exige sessão ativa
+- RN-AUTH-04: Qualquer rota além de `/login` exige sessão ativa (`AuthGuard`)
 - RN-AUTH-05: Logout invalida a sessão localmente e no Supabase
+- RN-AUTH-06: Rotas que exigem role específico (ex: `/configuracoes`) são protegidas por `RoleGuard`, redirecionam para `/` se o role for insuficiente
+- RN-AUTH-07: Sessão termina automaticamente após 30 minutos sem interação (mouse, teclado, toque, scroll), com toast informativo
 
 ---
 
@@ -93,16 +108,18 @@ Garantir que apenas utilizadores autorizados acedem ao sistema, com sessão segu
 
 ---
 
-## Ficheiros Sugeridos
+## Ficheiros Reais
 
 ```
 src/features/auth/
-  services/authService.ts     # signIn, signOut, getSession
-  hooks/useAuth.ts            # hook de estado de autenticação
+  AuthContext.tsx       # session + profile (role, nome); signIn/signOut; auto-logout por inatividade
+  AuthGuard.tsx         # Bloqueia rotas sem sessão
+  RoleGuard.tsx         # Bloqueia rotas sem role suficiente
+  useRole.ts            # Lê role/nome do context — zero queries extra
 src/app/pages/
-  LoginPage.tsx               # UI da página de login
+  LoginPage.tsx
 src/app/
-  routes.tsx                  # Proteção de rotas (PrivateRoute)
+  routes.tsx            # <AuthGuard> envolve as rotas privadas; <RoleGuard require="admin"> em /configuracoes
 ```
 
 ---

@@ -2,41 +2,43 @@
 
 Este documento é a verdade principal do projeto. Qualquer dúvida sobre o comportamento esperado do sistema deve ser resolvida aqui primeiro.
 
+**Estado: sistema em produção** (Vercel + Supabase), usado pela equipa da ENCIVIL.
+
 ---
 
 ## Visão do Produto
 
-Sistema web interno simples para controlo de materiais de armazém da ENCIVIL. Permite registar entradas e saídas de materiais de construção, consultar stock em tempo real e gerar relatórios de consumo por obra e período.
+Sistema web interno para controlo de materiais de armazém da ENCIVIL. Permite registar entradas e saídas de materiais de construção, consultar stock em tempo real e gerar relatórios de consumo por obra e período. Instalável como PWA em iOS e Android.
 
 **Princípio orientador:** Um encarregado de armazém com pouca experiência informática deve conseguir registar uma saída em menos de 10 segundos.
 
 ---
 
-## Escopo do MVP
+## Escopo Atual
 
 ### O que o sistema FAZ
 
-- Autenticação segura com 1 utilizador administrador
-- Gestão de produtos (criar, listar, editar, desativar)
-- Registo de movimentos: entrada, saída e ajuste
-- Atualização automática de stock após cada movimento
-- Histórico completo e imutável de todos os movimentos
+- Autenticação segura via Supabase Auth, com **dois roles**: `admin` e `gestor` (multiutilizador real, não é MVP de 1 utilizador)
+- Gestão de produtos (criar, listar, editar, arquivar, eliminar — admin apenas)
+- Registo de movimentos: entrada, saída e ajuste (admin e gestor)
+- Atualização automática e atómica de stock após cada movimento (RPC `registar_movimento`)
+- Histórico completo, imutável e paginado de todos os movimentos
 - Alertas de stock baixo e sem stock
 - Relatórios por período, produto, categoria e obra
-- Interface simples, responsiva (desktop e tablet)
+- Interface mobile-first, responsiva (telemóvel, tablet, desktop)
+- Instalável como PWA (ícone no ecrã inicial, funciona com conexão intermitente)
+- Auto-logout por inatividade (30 min) — compensação por ausência de MFA
 - Idioma: Português de Portugal
 
-### O que o sistema NÃO FAZ
+### O que o sistema NÃO FAZ (ainda)
 
-- ❌ Não é ecommerce
-- ❌ Não processa pagamentos
-- ❌ Não é ERP completo
+- ❌ Não é ecommerce, não processa pagamentos, não é ERP completo
 - ❌ Não controla faturação oficial
-- ❌ Não gere fornecedores (MVP)
-- ❌ Não tem multiutilizador (MVP)
-- ❌ Não faz leitura de código de barras (MVP)
-- ❌ Não exporta PDF/Excel (MVP)
-- ❌ Não tem aplicação mobile nativa (MVP)
+- ❌ Não gere fornecedores
+- ❌ Não faz leitura de código de barras
+- ❌ Não exporta PDF/Excel
+- ❌ Não tem aplicação mobile nativa (usa PWA em vez disso — ver `docs/specs/SPEC-PWA.md`)
+- ❌ Não tem MFA (indisponível no plano Supabase atual — compensado por auto-logout)
 
 ---
 
@@ -115,6 +117,8 @@ Dados institucionais: nome, logótipo, responsável de armazém, stock mínimo p
 | Deploy | Vercel | Integração direta com GitHub, HTTPS automático |
 | Relatórios | Calculados de movimentos | Garante auditabilidade e consistência histórica |
 | Deletar movimentos | Nunca fisicamente | Auditabilidade e integridade do stock histórico |
+| Code-splitting por rota | Removido (bundle único) | Eliminar "stale chunk" após deploy — ver ADR-008 |
+| Mudança de role | Apenas via RPC `promover_role()` | UPDATE direto na coluna `role` é bloqueado por GRANT — ver `docs/05-seguranca-e-acesso.md` |
 
 ---
 
@@ -129,18 +133,23 @@ Dados institucionais: nome, logótipo, responsável de armazém, stock mínimo p
 
 ## Prioridades
 
-1. **P0 — Crítico:** Login, produtos, entrada, saída, stock atualizado, histórico
-2. **P1 — Importante:** Relatórios, filtros, detalhes produto, configurações
-3. **P2 — Futuro:** Exportação, multiutilizador, código de barras, mobile
+1. **P0 — Entregue:** Login, produtos, entrada, saída, stock atualizado, histórico, multiutilizador (admin/gestor), PWA
+2. **P1 — Entregue:** Relatórios, filtros, detalhes produto, configurações, segurança hardened (RLS, RPCs auditadas, headers)
+3. **P2 — Futuro:** Exportação Excel/PDF, código de barras, obras como entidades, MFA (requer plano Supabase Pro)
+
+Backlog ativo de melhorias incrementais em `TASKS/` (SEGURANÇA / UX / PERFORMANCE).
 
 ---
 
-## Critérios de Sucesso do MVP
+## Critérios de Sucesso
 
 - [x] Encarregado regista saída em < 10 segundos
 - [x] Stock atualizado corretamente após cada movimento
-- [x] Histórico imutável e consultável
+- [x] Histórico imutável e consultável (paginado)
 - [x] Alerta visual de stock baixo no dashboard
 - [x] Relatório de consumo diário, semanal e mensal disponível
 - [x] Sem stock negativo possível
 - [x] Sistema usável sem formação técnica
+- [x] Multiutilizador com dois roles (admin/gestor), aplicado via RLS
+- [x] Instalável como PWA em iOS e Android
+- [x] Sem vulnerabilidades de privilege escalation, headers de segurança aplicados, dependências sem CVEs

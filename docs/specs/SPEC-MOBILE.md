@@ -40,18 +40,13 @@ Desktop (≥ md): Tabela completa com todas as colunas
 
 Implementado em: `ProductsPage`, `HistoryPage`, `DashboardPage`
 
-## Perfil Gestor/CEO (iPhone)
-Estado actual: sistema em MVP com role único (`admin`).
-A UI já está preparada para separação futura de roles:
+## Perfil Gestor/Encarregado (iPhone)
+Role `gestor` implementado e em produção (RLS + RoleGuard, não apenas UI):
 - Dashboard prioriza leitura (stats, alertas, movimentos recentes)
-- Ações de saída/entrada no topo (atalhos rápidos)
+- Ações de saída/entrada no topo (atalhos rápidos) — `MobileBottomNav` mostra o botão "+" central também para gestor
 - Alertas de stock baixo visíveis imediatamente
-- Nenhuma ação destrutiva em destaque
-
-Quando a role `gestor` for implementada (Fase 2):
-- Esconder botões de criar/editar/ajustar
-- Mostrar apenas dashboard, relatórios e histórico
-- Experiência só de consulta
+- Botões de criar/editar/ajustar produto e Configurações **não aparecem** (RLS bloquearia mesmo que aparecessem)
+- Pode registar movimentos (entrada/saída/ajuste) normalmente
 
 ## Perfil Administrador do Armazém
 Otimizado para velocidade operacional:

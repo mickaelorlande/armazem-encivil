@@ -28,9 +28,10 @@ Permitir a gestão completa do catálogo de materiais: criar, listar, editar, ve
 ## Regras de Negócio
 
 - RN-PROD-01 a RN-PROD-08 (ver `docs/02-regras-de-negocio.md`)
-- Código do produto: único, imutável após criação
+- Código do produto: único, gerado automaticamente pela sequência DB (`gerar_codigo_produto()` — formato `P1001`, `P1002`...), imutável após criação
 - Stock atual: não editável diretamente — apenas via movimentos
 - Desativação: lógica (`ativo = false`), nunca física
+- **CRUD restrito a `admin`** — `gestor` só lê. Aplicado por RLS (`produtos_insert_admin`, `produtos_update_admin`, `produtos_delete_admin`), não apenas por esconder botões no frontend
 
 ---
 

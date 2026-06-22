@@ -130,9 +130,9 @@
 
 **RN-RESP-01** — O responsável é a pessoa física que executou o movimento.
 
-**RN-RESP-02** — No MVP, o responsável é registado como texto livre (nome).
+**RN-RESP-02** — O responsável é registado como texto livre (nome), pré-preenchido automaticamente com o nome do utilizador autenticado (`useRole().nome`) mas editável — permite registar um movimento em nome de outro colega presente fisicamente no armazém.
 
-**RN-RESP-03** — Na Fase 2, o responsável será associado ao utilizador autenticado.
+**RN-RESP-03** — `created_by` (separado de `responsavel`) já associa o movimento ao utilizador autenticado que submeteu, para efeitos de auditoria — ver `docs/03-modelo-de-dados.md`.
 
 ---
 

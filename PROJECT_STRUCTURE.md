@@ -1,197 +1,205 @@
 # Controle Armazém ENCIVIL - Estrutura do Projeto
 
 ## Visão Geral
-Sistema interno de controle de armazém para a ENCIVIL, empresa de construção civil em Portugal. Sistema profissional e navegável para gerir entradas, saídas e stock de materiais.
+Sistema interno de controle de armazém para a ENCIVIL, empresa de construção civil em Portugal. Em produção, com Supabase real (PostgreSQL + Auth + RLS) e deploy automático na Vercel.
 
-## Estrutura de Diretórios
+## Estrutura de Diretórios (atual)
 
 ```
-src/app/
-├── components/          # Componentes reutilizáveis
-│   ├── Sidebar.tsx           # Menu lateral de navegação
-│   ├── Header.tsx            # Cabeçalho com perfil e notificações
-│   ├── StatCard.tsx          # Cartão de estatísticas
-│   ├── StockBadge.tsx        # Badge de estado do stock
-│   ├── MovementTypeBadge.tsx # Badge de tipo de movimento
-│   └── EmptyState.tsx        # Estado vazio (sem dados)
+src/
+├── app/
+│   ├── App.tsx                    # Raiz: AuthProvider + RouterProvider
+│   ├── routes.tsx                 # Definição de rotas (sem lazy loading — ver ADR-008)
+│   ├── types.ts                   # Tipos partilhados (Product, Movement, DashboardStats, LowStockItem)
+│   ├── layouts/
+│   │   └── MainLayout.tsx         # Sidebar (desktop) + MobileBottomNav (mobile) + Header
+│   ├── pages/
+│   │   ├── LoginPage.tsx
+│   │   ├── DashboardPage.tsx
+│   │   ├── ProductsPage.tsx       # Inclui tab de produtos arquivados
+│   │   ├── ProductDetailPage.tsx
+│   │   ├── NewMovementPage.tsx
+│   │   ├── HistoryPage.tsx        # Paginação 50/página + filtro ?produto=
+│   │   ├── ReportsPage.tsx
+│   │   ├── SettingsPage.tsx       # admin-only (RoleGuard + fieldset disabled)
+│   │   ├── DocsPage.tsx
+│   │   ├── HelpPage.tsx
+│   │   └── NotFoundPage.tsx
+│   ├── components/
+│   │   ├── ui/                    # shadcn/ui + Radix primitivos
+│   │   ├── Sidebar.tsx
+│   │   ├── MobileBottomNav.tsx    # Botão "+" visível para admin e gestor
+│   │   ├── Header.tsx             # Nome real + role do utilizador, sino de notificações
+│   │   ├── NotificationPanel.tsx  # Recebe notifications/loading via props (sem query própria)
+│   │   ├── PWAInstallHint.tsx
+│   │   ├── StatCard.tsx           # useCountUp com skeleton (sem flash de "0")
+│   │   ├── StockBadge.tsx
+│   │   ├── MovementTypeBadge.tsx
+│   │   ├── AddProductModal.tsx
+│   │   ├── EditProductModal.tsx
+│   │   └── ConfirmDialog.tsx
+│   └── data/
+│       └── mockData.ts            # Apenas labels/helpers (getCategoryLabel, getUnitLabel) — dados reais vêm do Supabase
 │
-├── layouts/            # Layouts principais
-│   └── MainLayout.tsx        # Layout com sidebar + header
+├── features/                      # Lógica de negócio por módulo
+│   ├── auth/
+│   │   ├── AuthContext.tsx        # session + profile (role, nome) + auto-logout por inatividade
+│   │   ├── AuthGuard.tsx          # Bloqueia rotas sem sessão
+│   │   ├── RoleGuard.tsx          # Bloqueia rotas sem role suficiente (ex: /configuracoes)
+│   │   └── useRole.ts             # Lê role/nome do AuthContext — zero queries extra
+│   ├── produtos/
+│   │   ├── hooks/useProdutos.ts
+│   │   └── services/produtosService.ts
+│   ├── movimentos/
+│   │   ├── hooks/useMovimentos.ts        # useMovimentos + useMovimentosPaginados
+│   │   └── services/movimentosService.ts # listarMovimentos, listarMovimentosPaginados, registarMovimento
+│   ├── dashboard/
+│   │   └── hooks/useDashboard.ts  # 5 queries paralelas, colunas mínimas (sem SELECT *)
+│   ├── notificacoes/
+│   │   └── hooks/useNotifications.ts  # Alertas de stock baixo/sem stock
+│   └── configuracoes/
+│       └── services/configuracoesService.ts
 │
-├── pages/              # Páginas do sistema
-│   ├── LoginPage.tsx         # Tela de autenticação
-│   ├── DashboardPage.tsx     # Dashboard principal
-│   ├── ProductsPage.tsx      # Listagem e gestão de produtos
-│   ├── ProductDetailPage.tsx # Detalhes e histórico de produto
-│   ├── NewMovementPage.tsx   # Registo de movimentos
-│   ├── HistoryPage.tsx       # Histórico completo
-│   ├── ReportsPage.tsx       # Relatórios e gráficos
-│   ├── SettingsPage.tsx      # Configurações do sistema
-│   └── NotFoundPage.tsx      # Página 404
+├── integrations/
+│   └── supabase/
+│       ├── client.ts               # Cliente Supabase (anon key apenas)
+│       └── types.ts                # RoleUtilizador e tipos gerados
 │
-├── data/               # Dados mock e helpers
-│   └── mockData.ts           # Produtos e movimentos de exemplo
+├── hooks/
+│   └── useCountUp.ts                # Animação de números, sem flash de "0"
 │
-├── types.ts            # Tipos TypeScript
-├── routes.tsx          # Configuração das rotas
-└── App.tsx             # Componente raiz
+└── styles/
+    └── index.css                   # Tailwind v4 + tokens @theme
+
+supabase/
+└── migrations/                     # Ordem cronológica, todas aplicadas em produção
+    ├── 20260611000000_initial_schema.sql
+    ├── 20260611000001_grants.sql
+    ├── 20260611000002_gestor_role.sql
+    ├── 20260611000003_seed_users.sql
+    ├── 20260611000004_produto_crud.sql
+    ├── 20260612000001_default_role_gestor.sql
+    ├── 20260612000002_secure_registar_movimento.sql
+    ├── 20260612000003_produto_codigo_seq.sql
+    ├── 20260612000004_movimentos_idx_produto.sql
+    └── 20260622000001_fix_profiles_privilege_escalation.sql
 ```
 
 ## Rotas do Sistema
 
-| Rota                  | Página                | Descrição                           |
-|-----------------------|-----------------------|-------------------------------------|
-| `/login`              | LoginPage             | Autenticação                        |
-| `/`                   | DashboardPage         | Dashboard principal                 |
-| `/produtos`           | ProductsPage          | Listagem de produtos                |
-| `/produtos/:id`       | ProductDetailPage     | Detalhes do produto                 |
-| `/novo-movimento`     | NewMovementPage       | Registo de entrada/saída/ajuste     |
-| `/historico`          | HistoryPage           | Histórico de movimentos             |
-| `/relatorios`         | ReportsPage           | Relatórios e gráficos               |
-| `/configuracoes`      | SettingsPage          | Configurações do sistema            |
-| `*`                   | NotFoundPage          | Página não encontrada               |
+| Rota | Página | Proteção |
+|---|---|---|
+| `/login` | LoginPage | Pública |
+| `/` | DashboardPage | AuthGuard |
+| `/produtos` | ProductsPage | AuthGuard |
+| `/produtos/:id` | ProductDetailPage | AuthGuard |
+| `/novo-movimento` | NewMovementPage | AuthGuard (?tipo= pré-seleciona entrada/saída) |
+| `/historico` | HistoryPage | AuthGuard (?produto= filtra por produto) |
+| `/relatorios` | ReportsPage | AuthGuard |
+| `/configuracoes` | SettingsPage | AuthGuard + **RoleGuard require="admin"** |
+| `/ajuda` | HelpPage | AuthGuard |
+| `/documentacao` | DocsPage | AuthGuard |
+| `*` | NotFoundPage | AuthGuard |
 
 ## Tipos de Dados Principais
 
-### Product
-- `id`: string
-- `code`: string (código único)
-- `name`: string
-- `category`: ProductCategory
-- `unit`: Unit
-- `currentStock`: number
-- `minStock`: number
-- `status`: 'normal' | 'baixo' | 'sem-stock'
+### Product (`src/app/types.ts`)
+```ts
+interface Product {
+  id: string; code: string; name: string;
+  category: ProductCategory; unit: Unit;
+  currentStock: number; minStock: number; status: StockStatus;
+  notes?: string; createdAt: Date; updatedAt: Date;
+}
+type LowStockItem = Pick<Product, 'id'|'name'|'unit'|'currentStock'|'minStock'|'status'>;
+```
 
 ### Movement
-- `id`: string
-- `productId`: string
-- `type`: 'entrada' | 'saida' | 'ajuste'
-- `quantity`: number
-- `responsible`: string
-- `destination`: string (fornecedor ou obra)
-- `date`: Date
-- `previousStock`: number
-- `newStock`: number
+```ts
+interface Movement {
+  id: string; productId: string; productName: string;
+  type: 'entrada' | 'saida' | 'ajuste'; quantity: number; unit: Unit;
+  responsible: string; destination?: string;
+  date: Date; previousStock: number; newStock: number;
+}
+```
+
+### RoleUtilizador (`src/integrations/supabase/types.ts`)
+```ts
+type RoleUtilizador = 'admin' | 'gestor';
+```
+
+## Modelo de Roles (resumo — ver `docs/05-seguranca-e-acesso.md`)
+
+| Capacidade | admin | gestor |
+|---|---|---|
+| Ver dashboard, produtos, histórico, relatórios | ✅ | ✅ |
+| Registar movimento (entrada/saída/ajuste) | ✅ | ✅ |
+| Criar/editar/arquivar/eliminar produto | ✅ | ❌ |
+| Configurações da empresa | ✅ | ❌ |
+| Promover/despromover role de outro utilizador | ✅ | ❌ |
+
+Aplicado em três camadas: RLS/GRANTs na DB (real), RPC com verificação de role (real), `RoleGuard`/UI no frontend (UX — nunca a única defesa).
 
 ## Paleta de Cores (Tema ENCIVIL)
 
-### Cores Principais
 - **Primary (Azul ENCIVIL)**: `#1e3a8a`
 - **Success (Verde)**: `#16a34a`
 - **Warning (Amarelo)**: `#f59e0b`
 - **Destructive (Vermelho)**: `#dc2626`
-- **Secondary (Cinza)**: `#64748b`
+- **Background**: `#f5f6f8` · **Card**: `#ffffff` · **Sidebar**: `#1a1d29`
 
-### Cores de Fundo
-- **Background**: `#f5f6f8`
-- **Card**: `#ffffff`
-- **Sidebar**: `#1a1d29`
+## Funcionalidades por Módulo
 
-## Funcionalidades Principais
+### Dashboard
+Stats (total produtos, entradas/saídas hoje, stock baixo), últimos 5 movimentos, alertas de stock com link direto ao produto, botões de ação rápida (`?tipo=entrada/saida`).
 
-### 1. Dashboard
-- Estatísticas rápidas (total produtos, entradas/saídas do dia, stock baixo)
-- Últimos 10 movimentos
-- Alertas de stock baixo
-- Botões rápidos para registar entrada/saída
+### Produtos
+Listagem com paginação, tab "Arquivados", pesquisa, filtro por categoria, modal de criar/editar (admin), código gerado por sequência DB (`gerar_codigo_produto()`), arquivar/eliminar (admin).
 
-### 2. Produtos
-- Listagem completa com filtro de pesquisa
-- Adicionar novo produto (modal)
-- Ver detalhes do produto
-- Indicadores visuais de estado do stock
+### Novo Movimento
+3 tipos, validação de stock em tempo real, responsável pré-preenchido com o nome do utilizador autenticado, atualização atómica via RPC `registar_movimento`.
 
-### 3. Novo Movimento
-- Interface rápida (objetivo: < 10 segundos)
-- 3 tipos: Entrada, Saída, Ajuste
-- Validação de stock insuficiente
-- Stock atual visível antes de confirmar
-- Feedback visual de sucesso
+### Histórico
+Paginação 50/página, filtros (tipo, período), filtro por produto via `?produto=`, link "Ver histórico completo" desde o detalhe do produto.
 
-### 4. Histórico
-- Todos os movimentos com filtros
-- Filtro por período (hoje, semana, mês, todos)
-- Filtro por tipo de movimento
-- Exportação de dados
+### Relatórios
+Gráficos de consumo por produto/categoria/obra, calculados sempre a partir de `movimentos_stock`.
 
-### 5. Relatórios
-- Gráficos de produtos mais consumidos
-- Distribuição por categoria
-- Estatísticas do período
-- Exportação para PDF/Excel
-
-### 6. Configurações
-- Dados da empresa
-- Configurações de stock mínimo padrão
-- Preferências de notificações
+### Configurações
+Dados da empresa — admin apenas; gestor vê formulário desativado com banner de aviso.
 
 ## Como Adicionar Novas Funcionalidades
 
 ### Adicionar Nova Página
 1. Criar componente em `src/app/pages/NomePage.tsx`
-2. Adicionar rota em `src/app/routes.tsx`
-3. Adicionar item ao menu em `src/app/components/Sidebar.tsx`
+2. Adicionar rota em `src/app/routes.tsx` (importação direta — **não usar `lazy()`**, ver ADR-008)
+3. Adicionar item ao menu em `Sidebar.tsx` e/ou `MobileBottomNav.tsx`
+4. Se exigir role específica, envolver com `<RoleGuard require="admin">`
 
 ### Adicionar Novo Tipo de Produto
 1. Atualizar `ProductCategory` em `src/app/types.ts`
 2. Adicionar label em `getCategoryLabel()` em `src/app/data/mockData.ts`
 
-### Adicionar Nova Unidade
-1. Atualizar `Unit` em `src/app/types.ts`
-2. Adicionar label em `getUnitLabel()` em `src/app/data/mockData.ts`
-
-## Próximos Passos (Integração Backend)
-
-Para converter em sistema real com Supabase:
-
-1. **Criar tabelas no Supabase:**
-   - `products` (produtos)
-   - `movements` (movimentos)
-   - `users` (utilizadores)
-   - `settings` (configurações)
-
-2. **Substituir mockData:**
-   - Criar hooks para fetch de dados
-   - Implementar mutations para criar/atualizar
-   - Adicionar loading states
-
-3. **Autenticação:**
-   - Implementar login real com Supabase Auth
-   - Proteger rotas privadas
-   - Gerir sessão do utilizador
-
-4. **Real-time:**
-   - Subscrições Supabase para atualizações em tempo real
-   - Notificações de stock baixo
-
-## Ícones Utilizados (Lucide React)
-
-- `LayoutDashboard` - Dashboard
-- `Package` - Produtos
-- `Plus` - Novo movimento
-- `History` - Histórico
-- `FileBarChart` - Relatórios
-- `Settings` - Configurações
-- `Warehouse` - Logo ENCIVIL
-- `ArrowDownCircle` - Entrada
-- `ArrowUpCircle` - Saída
-- `Edit3` - Ajuste
-- `AlertTriangle` - Alertas
+### Alterar Estrutura da Base de Dados
+1. Criar migration em `supabase/migrations/` com timestamp novo
+2. Aplicar com `supabase db push --db-url <connection-string>`
+3. Atualizar `docs/03-modelo-de-dados.md`
 
 ## Dependências Principais
 
-- `react-router` - Navegação
-- `recharts` - Gráficos
-- `lucide-react` - Ícones
-- `date-fns` - Manipulação de datas
-- Tailwind CSS v4 - Estilos
+- `react-router` 7.18+ — Navegação (sem CVEs conhecidos)
+- `recharts` — Gráficos
+- `lucide-react` — Ícones
+- `sonner` — Toasts
+- `vite-plugin-pwa` — PWA / Service Worker
+- `@supabase/supabase-js` — Cliente Supabase
+- Tailwind CSS v4 — Estilos
 
 ## Notas de Design
 
-- Sistema otimizado para desktop e tablet
-- Menu lateral fixo em desktop
+- Mobile-first; expande para tablet e desktop
+- Bottom nav fixa no mobile, sidebar fixa no desktop
 - Foco em velocidade operacional (< 10 segundos para registar saída)
-- Feedback visual imediato
-- Português de Portugal em toda interface
-- Design empresarial profissional
+- Feedback visual imediato (toasts, skeletons, sem flash de "0")
+- Português de Portugal em toda a interface

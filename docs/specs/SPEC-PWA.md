@@ -26,15 +26,18 @@ Permitir que o Gestor/CEO instale o sistema no iPhone como se fosse uma app nati
 - `apple-touch-icon-180x180.png` — iOS home screen
 
 ### Service Worker (Workbox via vite-plugin-pwa)
-Estratégia de cache:
+Estratégia de cache (`vite.config.ts`):
 
 | Recurso | Estratégia | TTL |
 |---------|-----------|-----|
-| JS/CSS/PNG/SVG (estáticos) | Cache-First | 30 dias |
-| Supabase REST/Auth/Storage | Network-First | fallback 5 min |
-| Navegação (HTML) | Network-First com fallback | index.html |
+| JS/CSS | StaleWhileRevalidate | 7 dias |
+| PNG/SVG/ICO/WOFF (imutáveis) | Cache-First | 30 dias |
+| Supabase REST/Auth/Storage | Network-First | timeout 10s, fallback 5 min |
+| Navegação (HTML) | `navigateFallback: /index.html` | — |
 
 **Importante:** Dados de stock (`supabase.co/rest/**`) nunca são servidos apenas do cache. Network-First garante que o utilizador vê dados reais.
+
+**Bundle único desde 2026-06-22 (ADR-008):** o app deixou de usar `lazy()` por rota — não há mais chunks JS separados por página, só um bundle (~300 KB gzip) + CSS. Isto eliminou por completo o erro "Failed to fetch dynamically imported module" que ocorria nos minutos seguintes a um deploy, quando o service worker tinha o `index.html` antigo em cache com referências a chunks que a Vercel já não servia. `skipWaiting: true` + `clientsClaim: true` continuam ativos para que o novo service worker assuma controlo imediatamente após cada deploy.
 
 ### Meta tags iOS (`index.html`)
 ```html

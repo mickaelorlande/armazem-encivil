@@ -66,6 +66,21 @@
 
 ---
 
+### Módulo: Segurança e Acesso
+
+| Código | Cenário | Passos | Resultado Esperado | Prioridade |
+|--------|---------|--------|--------------------|------------|
+| T-SEC-01 | Gestor não pode auto-promover a admin | 1. Login como gestor 2. `supabase.from('profiles').update({role:'admin'}).eq('id', meuId)` na consola | Erro de permissão (GRANT bloqueia a coluna `role`) | P0 |
+| T-SEC-02 | Gestor não pode criar produto via API direta | 1. Login como gestor 2. `supabase.from('produtos').insert({...})` na consola | RLS rejeita; produto não é criado | P0 |
+| T-SEC-03 | Gestor não acede a `/configuracoes` | 1. Login como gestor 2. Navegar para `/configuracoes` | Redireciona para `/` (RoleGuard) | P0 |
+| T-SEC-04 | `promover_role` só funciona para admin | 1. Login como gestor 2. Chamar RPC `promover_role` | RPC lança exceção "Autorização negada" | P0 |
+| T-SEC-05 | Admin não consegue auto-despromover via RPC | 1. Login como admin 2. `promover_role(meuId, 'gestor')` | RPC lança exceção (evita lockout) | P1 |
+| T-SEC-06 | Sessão expira por inatividade | 1. Login 2. Não interagir por 30 min | Logout automático + toast informativo | P1 |
+| T-SEC-07 | Headers de segurança presentes | 1. Inspecionar resposta HTTP de qualquer página | CSP, X-Frame-Options, HSTS, etc. presentes | P1 |
+| T-SEC-08 | Utilizador não autenticado não lê nenhuma tabela | 1. Chamada à API Supabase sem token (anon) | RLS bloqueia tudo, dados vazios ou 401 | P0 |
+
+---
+
 ### Módulo: Alertas
 
 | Código | Cenário | Passos | Resultado Esperado | Prioridade |

@@ -14,6 +14,8 @@ Versão: 1.0 | Data: 2026-06-11
 | AUTH-04 | O utilizador deve conseguir terminar sessão | P0 | Botão de logout visível e funcional, redireciona para `/login` |
 | AUTH-05 | A sessão deve persistir entre recarregamentos da página | P1 | Após F5, utilizador mantém sessão ativa |
 | AUTH-06 | Credenciais inválidas devem mostrar mensagem de erro clara | P0 | Mensagem "E-mail ou palavra-passe incorretos" visível |
+| AUTH-07 | Sistema deve suportar dois roles (admin, gestor) com permissões distintas aplicadas no servidor (RLS), não apenas na UI | P0 | Gestor autenticado não consegue criar/editar produto mesmo chamando a API diretamente |
+| AUTH-08 | Sessão deve terminar automaticamente após período de inatividade | P1 | 30 min sem interação → logout automático com aviso |
 
 ---
 

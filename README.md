@@ -2,6 +2,8 @@
 
 Sistema web interno para controlo de materiais de armazém da empresa ENCIVIL.
 
+**Estado: em produção.** [armazem-encivil.vercel.app](https://armazem-encivil.vercel.app)
+
 ---
 
 ## Objetivo do Sistema
@@ -17,66 +19,40 @@ A ENCIVIL geria o stock de materiais em folhas de cálculo e registos manuais em
 - Sem alertas de stock mínimo, levando a paragens de obra por falta de material
 - Sem histórico fiável para relatórios de consumo por obra
 
-## Público-alvo
+## Público-alvo e Roles
 
-- Encarregado de armazém (utilizador principal, pouca experiência informática)
-- Gestor da empresa (consulta relatórios)
+| Role | Quem | Pode |
+|------|------|------|
+| `admin` | Administrador de TI / direção | Tudo: CRUD de produtos, configurações, promover/despromover roles, ver audit log |
+| `gestor` | Encarregado de armazém, CEO (consulta) | Ver dashboard/produtos/histórico/relatórios, registar movimentos (entrada/saída/ajuste). Sem acesso a Configurações nem CRUD de produtos |
+
+Role é definida na tabela `profiles` e aplicada via Row Level Security — não é apenas uma restrição de UI. Ver `docs/05-seguranca-e-acesso.md`.
 
 ---
 
 ## Stack Técnica
 
-| Componente       | Tecnologia                 |
-|-----------------|---------------------------|
-| Frontend        | React 18 + TypeScript + Vite |
-| Estilização     | Tailwind CSS v4            |
-| Roteamento      | React Router v7            |
-| Backend         | Supabase                   |
-| Autenticação    | Supabase Auth              |
-| Base de dados   | Supabase PostgreSQL + RLS  |
-| Deploy          | Vercel                     |
-| Exportação      | PDF/Excel (Fase 2)         |
+| Componente | Tecnologia |
+|---|---|
+| Frontend | React 18 + TypeScript + Vite 6 |
+| Estilização | Tailwind CSS v4 |
+| Roteamento | React Router v7 (bundle único, sem code-splitting por rota — ver ADR-008) |
+| PWA | vite-plugin-pwa / Workbox — instalável em iOS e Android |
+| Backend | Supabase (PostgreSQL + Auth + RLS) |
+| Hospedagem | Vercel (deploy automático em push para `main`) |
 
----
+## Módulos Implementados
 
-## Módulos Principais
-
-| Módulo         | Descrição                                           |
-|---------------|-----------------------------------------------------|
-| Autenticação  | Login/logout com sessão protegida                   |
-| Dashboard     | Visão geral: stats, alertas e últimos movimentos    |
-| Produtos      | CRUD de materiais com stock atual e mínimo          |
-| Movimentos    | Registo de entradas, saídas e ajustes              |
-| Histórico     | Listagem completa de movimentos com filtros         |
-| Relatórios    | Consumo por período, produto, categoria e obra      |
-| Configurações | Dados da empresa e parâmetros do sistema            |
-
----
-
-## Fluxo Principal do Sistema
-
-```
-Login
-  → Dashboard (visão geral)
-    → Novo Movimento (entrada/saída/ajuste)
-      → Stock atualizado automaticamente
-        → Histórico regista o movimento
-          → Relatórios calculados sobre o histórico
-```
-
----
-
-## Regras Críticas
-
-1. Entrada **soma** ao stock atual.
-2. Saída **subtrai** do stock atual.
-3. Saída não pode ser superior ao stock disponível (MVP bloqueia).
-4. Ajuste corrige o stock para um valor ou aplica uma correção explícita.
-5. Histórico de movimentos **nunca é apagado fisicamente**.
-6. Todos os relatórios são calculados a partir de `movimentos_stock`, não de `produtos.stock_atual`.
-7. Data/hora registada automaticamente com timezone `Europe/Lisbon`.
-8. Destino/obra é **obrigatório** para saídas.
-9. Produto desativado não aparece em novos movimentos, mas mantém-se no histórico.
+| Módulo | Descrição | Estado |
+|---|---|---|
+| Autenticação | Login/logout, sessão JWT, auto-logout por inatividade (30 min) | ✅ |
+| Dashboard | Stats, alertas de stock, últimos movimentos | ✅ |
+| Produtos | CRUD completo (admin), listagem com paginação, tab de arquivados | ✅ |
+| Movimentos | Registo de entrada/saída/ajuste via RPC atómica | ✅ |
+| Histórico | Listagem paginada (50/página) com filtros, incl. por produto via URL | ✅ |
+| Relatórios | Consumo por período, produto, categoria e obra | ✅ |
+| Configurações | Dados da empresa (admin apenas) | ✅ |
+| PWA | Instalável, ícone, offline shell | ✅ |
 
 ---
 
@@ -85,28 +61,34 @@ Login
 ### Pré-requisitos
 
 - Node.js 18+
-- pnpm 8+
-- Conta Supabase
+- npm
+- Conta Supabase com acesso ao projeto
 
 ### Instalação
 
 ```bash
-git clone https://github.com/encivil/armazem.git
-cd armazem
-pnpm install
+git clone https://github.com/mickaelorlande/armazem-encivil.git
+cd armazem-encivil
+npm install
 ```
 
 ### Configuração
 
 ```bash
 cp .env.example .env.local
-# Editar .env.local com as variáveis Supabase
+# Editar .env.local com VITE_SUPABASE_URL e VITE_SUPABASE_PUBLISHABLE_KEY
 ```
 
 ### Executar em desenvolvimento
 
 ```bash
-pnpm dev
+npm run dev
+```
+
+### Build de produção
+
+```bash
+npm run build
 ```
 
 ---
@@ -114,96 +96,77 @@ pnpm dev
 ## Variáveis de Ambiente
 
 ```env
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=eyJ...
+VITE_SUPABASE_URL=https://wuruhxmbueeyhiqgvlxu.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-> **Atenção:** Nunca usar `service_role` key no frontend. Usar apenas a `anon/publishable` key.
+> **Regra inegociável:** nunca usar a `service-role`/`secret` key no frontend. Apenas a `anon`/`publishable` key, que é segura para expor — a RLS + GRANTs a nível de coluna garantem o controlo de acesso real. Ver `docs/05-seguranca-e-acesso.md`.
 
 ---
 
-## Estrutura de Pastas Recomendada
+## Estrutura do Código
+
+Ver `docs/04-arquitetura.md` para a árvore completa e responsabilidades por camada. Resumo:
 
 ```
 src/
-├── app/
-│   ├── App.tsx
-│   ├── routes.tsx
-│   ├── layouts/
-│   │   └── MainLayout.tsx
-│   ├── pages/
-│   │   ├── LoginPage.tsx
-│   │   ├── DashboardPage.tsx
-│   │   ├── ProductsPage.tsx
-│   │   ├── ProductDetailPage.tsx
-│   │   ├── NewMovementPage.tsx
-│   │   ├── HistoryPage.tsx
-│   │   ├── ReportsPage.tsx
-│   │   └── SettingsPage.tsx
-│   ├── components/
-│   │   ├── ui/           # Componentes base (shadcn/ui)
-│   │   ├── Sidebar.tsx
-│   │   ├── Header.tsx
-│   │   ├── StatCard.tsx
-│   │   ├── StockBadge.tsx
-│   │   └── MovementTypeBadge.tsx
-│   └── data/
-│       └── mockData.ts
-├── features/
-│   ├── auth/
-│   ├── dashboard/
-│   ├── produtos/
-│   │   ├── components/
-│   │   ├── services/
-│   │   └── types.ts
-│   ├── movimentos/
-│   │   ├── components/
-│   │   ├── services/
-│   │   └── types.ts
-│   ├── relatorios/
-│   └── configuracoes/
-├── integrations/
-│   └── supabase/
-│       ├── client.ts
-│       ├── types.ts
-│       └── queries/
-├── shared/
-│   └── hooks/
-├── utils/
-│   ├── date.ts
-│   └── stock.ts
-└── styles/
-    ├── theme.css
-    └── fonts.css
+├── app/          # Páginas, rotas, layout, componentes de UI
+├── features/     # Lógica de negócio por módulo (auth, produtos, movimentos, dashboard, notificacoes, configuracoes)
+├── integrations/supabase/   # Cliente Supabase + tipos gerados
+├── hooks/        # Hooks partilhados (useCountUp, etc.)
+└── styles/       # Tokens de tema ENCIVIL
+supabase/
+└── migrations/   # Todas as migrations SQL aplicadas em produção
 ```
 
 ---
 
-## Estado Atual do Projeto
+## Regras Críticas de Negócio
 
-- [x] Protótipo completo com React + TypeScript
-- [x] Todas as 8 páginas navegáveis
-- [x] Dados mock realistas
-- [x] Design premium paleta ENCIVIL (azul escuro, branco, amarelo/laranja)
-- [x] Componentes reutilizáveis
-- [x] Responsivo desktop e tablet
-- [x] Documentação técnica completa
-- [ ] Integração Supabase
-- [ ] Supabase Auth real
-- [ ] RLS configurado
-- [ ] Deploy Vercel
+1. Entrada **soma** ao stock atual. Saída **subtrai**. Ajuste define o valor exato.
+2. Saída não pode ser superior ao stock disponível — bloqueada pela RPC `registar_movimento`.
+3. Histórico de movimentos **nunca é apagado fisicamente**.
+4. Todos os relatórios são calculados a partir de `movimentos_stock`, não de `produtos.stock_atual`.
+5. Destino/obra é **obrigatório** para saídas.
+6. Produto desativado não aparece em novos movimentos, mas mantém-se no histórico.
+7. Mudança de role de utilizador só acontece via RPC `promover_role()` (admin-only, auditada) — nunca por update direto.
+
+Detalhe completo em `docs/02-regras-de-negocio.md`.
 
 ---
 
-## Próximos Passos
+## Segurança
 
-1. Criar projeto no Supabase
-2. Executar migrações SQL (`docs/03-modelo-de-dados.md`)
-3. Configurar Auth e RLS
-4. Substituir `mockData.ts` por queries reais ao Supabase
-5. Configurar deploy na Vercel
-6. Treinar responsável de armazém
+Resumo — ver `docs/05-seguranca-e-acesso.md` para o detalhe completo:
+
+- RLS ativa em todas as tabelas; GRANTs a nível de coluna em `profiles` (utilizador só edita `nome`, nunca `role`)
+- RPCs sensíveis (`registar_movimento`, `promover_role`) verificam role no servidor com `SECURITY DEFINER`
+- `audit_log` regista mudanças de role
+- Headers de segurança no Vercel: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+- Auto-logout após 30 min de inatividade (compensação por falta de MFA no plano atual)
+- Dependências sem CVEs conhecidos (`npm audit` limpo)
+- Pre-commit hook bloqueia commits com padrões de segredo (`sb_secret-`, `service-role`, JWTs longos)
 
 ---
 
-*Documentação completa em `/docs/`. Ler `AGENTS.md` antes de contribuir.*
+## Documentação
+
+```
+docs/
+  00-source-of-truth.md       ← Ler sempre primeiro
+  01-requisitos-funcionais.md
+  02-regras-de-negocio.md
+  03-modelo-de-dados.md
+  04-arquitetura.md
+  05-seguranca-e-acesso.md     ← Modelo de roles, RLS, RPCs, audit log
+  06-ux-ui.md
+  07-relatorios.md
+  08-testes.md
+  09-implantacao.md
+  10-roadmap.md
+  specs/SPEC-*.md              ← Spec funcional por módulo
+  adrs/ADR-*.md                ← Decisões arquiteturais
+TASKS/                          ← Backlog ativo (SEGURANÇA / UX / PERFORMANCE)
+```
+
+Ler `AGENTS.md` antes de contribuir com IA.
