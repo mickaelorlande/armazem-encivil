@@ -83,11 +83,11 @@ export async function criarProduto(input: NovoProduto): Promise<Product> {
   return toProduct(data as ProdutoRow)
 }
 
-export type AtualizarProduto = Partial<NovoProduto>
+// 'code' nunca aparece aqui — código é gerado automaticamente e imutável após criação
+export type AtualizarProduto = Partial<Omit<NovoProduto, 'code'>>
 
 export async function atualizarProduto(id: string, input: AtualizarProduto): Promise<Product> {
   const update: Record<string, unknown> = {}
-  if (input.code !== undefined) update.codigo = input.code
   if (input.name !== undefined) update.nome = input.name
   if (input.category !== undefined) update.categoria = input.category
   if (input.unit !== undefined) update.unidade = input.unit

@@ -38,7 +38,6 @@ export function EditProductModal({ product, hasMovements, onClose, onSuccess }: 
   const { atualizar, loading } = useAtualizarProduto();
 
   const [form, setForm] = useState({
-    code:     product.code,
     name:     product.name,
     category: product.category,
     unit:     product.unit,
@@ -51,7 +50,6 @@ export function EditProductModal({ product, hasMovements, onClose, onSuccess }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const updated = await atualizar(product.id, {
-      code:     form.code,
       name:     form.name,
       category: form.category as ProductCategory,
       unit:     form.unit as Unit,
@@ -91,14 +89,14 @@ export function EditProductModal({ product, hasMovements, onClose, onSuccess }: 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Código <span className="text-muted-foreground font-normal text-xs">(único)</span>
+                Código <span className="text-muted-foreground font-normal text-xs">(gerado automaticamente, fixo)</span>
               </label>
               <input
                 type="text"
-                value={form.code}
-                onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                className={inputCls}
-                required
+                value={product.code}
+                readOnly
+                disabled
+                className={`${inputCls} bg-muted text-muted-foreground cursor-not-allowed`}
               />
             </div>
             <div>

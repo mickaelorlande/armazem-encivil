@@ -329,11 +329,13 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     name: '', code: '', category: 'outro' as ProductCategory, unit: 'unidade' as Unit,
     initialStock: '', minStock: '', notes: '',
   });
+  const [gerandoCodigo, setGerandoCodigo] = useState(true);
 
-  // Sugerir código único ao abrir o modal
+  // Código é sempre gerado automaticamente pela sequência da DB — nunca digitado pelo utilizador
   useEffect(() => {
     supabase.rpc('gerar_codigo_produto').then(({ data }) => {
-      if (data) setFormData(prev => ({ ...prev, code: prev.code || data }));
+      if (data) setFormData(prev => ({ ...prev, code: data }));
+      setGerandoCodigo(false);
     });
   }, []);
 
@@ -368,8 +370,14 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Código <span className="text-muted-foreground font-normal text-xs">(único)</span></label>
-              <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })} className={inputCls} placeholder="Ex: CIM001" required />
+              <label className="block text-sm font-medium mb-2">Código <span className="text-muted-foreground font-normal text-xs">(gerado automaticamente)</span></label>
+              <input
+                type="text"
+                value={gerandoCodigo ? 'A gerar…' : formData.code}
+                readOnly
+                disabled
+                className={`${inputCls} bg-muted text-muted-foreground cursor-not-allowed`}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">Nome do Produto</label>
@@ -405,7 +413,7 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className={`${inputCls} resize-none`} rows={2} placeholder="Localização no armazém, fornecedor habitual, etc." />
           </div>
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={loading} className="flex-1 py-3.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60">
+            <button type="submit" disabled={loading || gerandoCodigo} className="flex-1 py-3.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-60">
               {loading ? 'A guardar…' : 'Criar Produto'}
             </button>
             <button type="button" onClick={onClose} disabled={loading} className="flex-1 py-3.5 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 active:scale-[0.98] transition-all">
