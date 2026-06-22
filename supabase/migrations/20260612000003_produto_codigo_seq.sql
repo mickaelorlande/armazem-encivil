@@ -3,13 +3,13 @@
 -- Adiciona RPC gerar_codigo_produto() para sugestão de código
 -- único no frontend. O campo codigo já tem UNIQUE no schema.
 --
--- Nota: O código é sempre visível e editável pelo utilizador.
--- Esta função gera apenas uma SUGESTÃO — o utilizador pode
--- substituir por um código semântico (ex: CIM001, ARE002).
+-- Nota histórica: nesta migration o código ainda era editável pelo
+-- utilizador. Isso foi alterado em 2026-06-22 (ver migration
+-- 20260622000002) — o código passou a ser sempre automático e
+-- imutável. O início em 1001 também foi corrigido para 1 nessa
+-- migration posterior.
 -- =============================================================
 
--- Sequência base para auto-geração (começa em 1001 para deixar
--- os primeiros 1000 para códigos manuais/migração de dados)
 CREATE SEQUENCE IF NOT EXISTS produto_codigo_seq START 1001 INCREMENT 1;
 
 -- RPC pública (autenticados) para obter o próximo código sugerido
