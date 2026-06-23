@@ -17,6 +17,8 @@ type EmprestimoRow = {
   observacoes_devolucao: string | null
   responsavel_entrega: string
   responsavel_recebimento: string | null
+  assinatura_entrega: string | null
+  assinatura_devolucao: string | null
   ferramentas: { nome: string; codigo: string } | null
 }
 
@@ -39,6 +41,8 @@ function toLoan(row: EmprestimoRow): ToolLoan {
     returnNotes: row.observacoes_devolucao ?? undefined,
     deliveredBy: row.responsavel_entrega,
     receivedBy: row.responsavel_recebimento ?? undefined,
+    deliverySignature: row.assinatura_entrega ?? undefined,
+    returnSignature: row.assinatura_devolucao ?? undefined,
   }
 }
 
@@ -113,6 +117,7 @@ export type RegistarEmprestimoInput = {
   toolId: string
   employeeName: string
   deliveredBy: string
+  signature: string
   employeeDocument?: string
   destination?: string
   expectedReturnDate?: string
@@ -142,13 +147,22 @@ export async function registarEmprestimo(input: RegistarEmprestimoInput): Promis
     p_observacoes: input.notes ?? null,
   })
   if (error) throw error
-  return buscarEmprestimoComFerramenta((data as EmprestimoRow).id)
+
+  const loanId = (data as EmprestimoRow).id
+  const { error: sigError } = await supabase
+    .from('emprestimos_ferramentas')
+    .update({ assinatura_entrega: input.signature })
+    .eq('id', loanId)
+  if (sigError) throw sigError
+
+  return buscarEmprestimoComFerramenta(loanId)
 }
 
 export type RegistarDevolucaoInput = {
   loanId: string
   returnCondition: ReturnCondition
   receivedBy: string
+  signature: string
   returnNotes?: string
 }
 
@@ -160,5 +174,13 @@ export async function registarDevolucao(input: RegistarDevolucaoInput): Promise<
     p_observacoes_devolucao: input.returnNotes ?? null,
   })
   if (error) throw error
-  return buscarEmprestimoComFerramenta((data as EmprestimoRow).id)
+
+  const loanId = (data as EmprestimoRow).id
+  const { error: sigError } = await supabase
+    .from('emprestimos_ferramentas')
+    .update({ assinatura_devolucao: input.signature })
+    .eq('id', loanId)
+  if (sigError) throw sigError
+
+  return buscarEmprestimoComFerramenta(loanId)
 }

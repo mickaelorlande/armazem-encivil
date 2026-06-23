@@ -11,6 +11,7 @@ import {
 } from '@/features/ferramentas/hooks/useEmprestimos';
 import { useRole } from '@/features/auth/useRole';
 import { ToolCombobox } from './ToolCombobox';
+import { SignaturePad } from './SignaturePad';
 import type { Tool, ToolCategory, ToolLoan, ReturnCondition } from '../types';
 
 const inputCls = 'w-full px-4 py-3 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base';
@@ -155,6 +156,7 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
     deliveredBy: nome,
     notes: '',
   });
+  const [signature, setSignature] = useState<string | null>(null);
 
   useEffect(() => {
     if (nome) setFormData(prev => ({ ...prev, deliveredBy: prev.deliveredBy || nome }));
@@ -163,10 +165,12 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.toolId) { toast.error('Selecione uma ferramenta.'); return; }
+    if (!signature) { toast.error('A assinatura do funcionário é obrigatória.'); return; }
     const result = await registar({
       toolId: formData.toolId,
       employeeName: formData.employeeName,
       deliveredBy: formData.deliveredBy,
+      signature,
       employeeDocument: formData.employeeDocument || undefined,
       destination: formData.destination || undefined,
       expectedReturnDate: formData.expectedReturnDate || undefined,
@@ -221,8 +225,13 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
             <label className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal">(opcional)</span></label>
             <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className={`${inputCls} resize-none`} rows={2} />
           </div>
+          <SignaturePad
+            label="Assinatura do Funcionário (confirma a receção da ferramenta)"
+            value={signature}
+            onChange={setSignature}
+          />
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={loading} className="flex-1 py-3.5 bg-warning text-white rounded-xl font-bold hover:bg-warning/90 active:scale-[0.98] transition-all disabled:opacity-60">
+            <button type="submit" disabled={loading || !signature} className="flex-1 py-3.5 bg-warning text-white rounded-xl font-bold hover:bg-warning/90 active:scale-[0.98] transition-all disabled:opacity-60">
               {loading ? 'A registar…' : 'Confirmar Empréstimo'}
             </button>
             <button type="button" onClick={onClose} disabled={loading} className="flex-1 py-3.5 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 active:scale-[0.98] transition-all">
@@ -255,6 +264,7 @@ export function ReturnToolModal({ loan, onClose, onSuccess }: {
     receivedBy: nome,
     notes: '',
   });
+  const [signature, setSignature] = useState<string | null>(null);
 
   useEffect(() => {
     if (nome) setFormData(prev => ({ ...prev, receivedBy: prev.receivedBy || nome }));
@@ -262,10 +272,12 @@ export function ReturnToolModal({ loan, onClose, onSuccess }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!signature) { toast.error('A assinatura do funcionário é obrigatória.'); return; }
     const result = await devolver({
       loanId: loan.id,
       returnCondition: formData.returnCondition,
       receivedBy: formData.receivedBy,
+      signature,
       returnNotes: formData.notes || undefined,
     });
     if (result) {
@@ -306,8 +318,13 @@ export function ReturnToolModal({ loan, onClose, onSuccess }: {
             <label className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal">(opcional)</span></label>
             <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className={`${inputCls} resize-none`} rows={2} placeholder="Detalhes sobre o estado, danos, etc." />
           </div>
+          <SignaturePad
+            label="Assinatura do Funcionário (confirma a devolução da ferramenta)"
+            value={signature}
+            onChange={setSignature}
+          />
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={loading} className="flex-1 py-3.5 bg-success text-success-foreground rounded-xl font-bold hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-60">
+            <button type="submit" disabled={loading || !signature} className="flex-1 py-3.5 bg-success text-success-foreground rounded-xl font-bold hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-60">
               {loading ? 'A registar…' : 'Confirmar Devolução'}
             </button>
             <button type="button" onClick={onClose} disabled={loading} className="flex-1 py-3.5 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 active:scale-[0.98] transition-all">

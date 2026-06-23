@@ -59,6 +59,19 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
     </div>
   );
 
+  const signatureBlock = (name: string, role: string, signature?: string) => (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ height: 56, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        {signature && (
+          <img src={signature} alt="" style={{ maxHeight: 54, maxWidth: '100%', objectFit: 'contain' }} />
+        )}
+      </div>
+      <div style={{ borderTop: '1px solid #1e293b', marginBottom: 6 }} />
+      <div style={{ fontSize: 12, fontWeight: 600 }}>{name}</div>
+      <div style={{ fontSize: 10, color: SLATE, marginTop: 2 }}>{role}</div>
+    </div>
+  );
+
   const isDevolvido = loan.status === 'devolvido';
 
   return createPortal(
@@ -188,6 +201,13 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
           </li>
         </ol>
 
+        {/* Assinaturas — Entrega */}
+        {sectionTitle('Assinatura na Entrega')}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
+          {signatureBlock(loan.employeeName, 'O Utilizador', loan.deliverySignature)}
+          {signatureBlock(loan.deliveredBy, 'Pela Empresa', undefined)}
+        </div>
+
         {/* Secção de devolução — só aparece se já tiver sido devolvida */}
         {isDevolvido && (
           <>
@@ -202,22 +222,13 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
                 <strong>Observações da devolução:</strong> {loan.returnNotes}
               </p>
             )}
+
+            <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
+              {signatureBlock(loan.employeeName, 'O Utilizador (Devolução)', loan.returnSignature)}
+              {signatureBlock(loan.receivedBy ?? '—', 'Pela Empresa (Devolução)', undefined)}
+            </div>
           </>
         )}
-
-        {/* Assinaturas */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginTop: 56 }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ borderTop: `1px solid #1e293b`, marginBottom: 6 }} />
-            <div style={{ fontSize: 12, fontWeight: 600 }}>{loan.employeeName}</div>
-            <div style={{ fontSize: 10, color: SLATE, marginTop: 2 }}>O Utilizador</div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ borderTop: `1px solid #1e293b`, marginBottom: 6 }} />
-            <div style={{ fontSize: 12, fontWeight: 600 }}>{loan.deliveredBy}</div>
-            <div style={{ fontSize: 10, color: SLATE, marginTop: 2 }}>Pela Empresa</div>
-          </div>
-        </div>
 
         <p style={{ fontSize: 10, color: SLATE, textAlign: 'center', marginTop: 40 }}>
           Documento gerado pelo Sistema de Controlo de Armazém {config?.nomeEmpresa ?? 'ENCIVIL'} em {fmtDate(new Date())}
