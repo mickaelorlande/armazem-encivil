@@ -497,29 +497,27 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
 
 /* ─── Relatório de Ferramentas ──────────────────────────────────── */
 
-function ToolsReportSection() {
-  const [loading, setLoading] = useState(true)
-  const [tools, setTools] = useState<Tool[]>([])
-  const [loans, setLoans] = useState<ToolLoan[]>([])
+function useToolsActivityData(loans: ToolLoan[], period: Period) {
+  return useMemo(() => {
+    const byYear = period === 'ano'
+    const buckets = new Map<string, { sortKey: string; label: string; Empréstimos: number }>()
+    loans.forEach(l => {
+      const sortKey = byYear
+        ? `${l.loanDate.getFullYear()}-${String(l.loanDate.getMonth() + 1).padStart(2, '0')}`
+        : l.loanDate.toISOString().split('T')[0]
+      const label = byYear
+        ? l.loanDate.toLocaleDateString('pt-PT', { month: 'short', year: '2-digit' })
+        : l.loanDate.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })
+      const existing = buckets.get(sortKey) ?? { sortKey, label, Empréstimos: 0 }
+      existing.Empréstimos++
+      buckets.set(sortKey, existing)
+    })
+    return Array.from(buckets.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+  }, [loans, period])
+}
 
-  useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    Promise.all([listarFerramentas(false), listarEmprestimos({})])
-      .then(([t, l]) => { if (!cancelled) { setTools(t); setLoans(l) } })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [])
-
-  const disponiveis = tools.filter(t => t.status === 'disponivel').length
-  const emprestadas = tools.filter(t => t.status === 'emprestada').length
-  const manutencao  = tools.filter(t => t.status === 'manutencao').length
-
-  const ativos = loans.filter(l => l.status === 'ativo')
-  const atrasados = ativos.filter(l => l.expectedReturnDate && l.expectedReturnDate.getTime() < Date.now())
-
-  const topFuncionarios = useMemo(() => {
+function useTopFuncionarios(loans: ToolLoan[]) {
+  return useMemo(() => {
     const counts = new Map<string, number>()
     loans.forEach(l => counts.set(l.employeeName, (counts.get(l.employeeName) ?? 0) + 1))
     return Array.from(counts.entries())
@@ -527,14 +525,67 @@ function ToolsReportSection() {
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 5)
   }, [loans])
+}
+
+type ToolsReportData = {
+  loading: boolean
+  tools: Tool[]
+  loansCurrent: ToolLoan[]
+  loansPrevious: ToolLoan[]
+  loansActive: ToolLoan[]
+  period: Period
+  periodLabel: string
+  prevLabel: string
+}
+
+function ToolsReportSection({ loading, tools, loansCurrent, loansPrevious, loansActive, period }: ToolsReportData) {
+  const disponiveis = tools.filter(t => t.status === 'disponivel').length
+  const emprestadas = tools.filter(t => t.status === 'emprestada').length
+  const manutencao  = tools.filter(t => t.status === 'manutencao').length
+
+  const atrasados = loansActive.filter(l => l.expectedReturnDate && l.expectedReturnDate.getTime() < Date.now())
+  const devolvidosPeriodo = loansCurrent.filter(l => l.status === 'devolvido').length
+  const devolvidosPeriodoPrev = loansPrevious.filter(l => l.status === 'devolvido').length
+
+  const trendEmprestimos = calcTrend(loansCurrent.length, loansPrevious.length)
+  const trendDevolvidos  = calcTrend(devolvidosPeriodo, devolvidosPeriodoPrev)
+
+  const activityData = useToolsActivityData(loansCurrent, period)
+  const topFuncionarios = useTopFuncionarios(loansCurrent)
 
   return (
     <div className="space-y-6 pb-8">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <KpiCard label="Total de Ferramentas" value={tools.length} icon={Wrench}        iconBg="bg-primary/10"     valueColor="text-primary"     trend={null} loading={loading} />
-        <KpiCard label="Disponíveis"           value={disponiveis}  icon={Boxes}         iconBg="bg-success/10"     valueColor="text-success"     trend={null} loading={loading} />
-        <KpiCard label="Emprestadas"           value={emprestadas}  icon={ArrowUpCircle} iconBg="bg-warning/10"     valueColor="text-warning"     trend={null} loading={loading} />
-        <KpiCard label="Em Atraso"             value={atrasados.length} icon={AlertTriangle} iconBg="bg-destructive/10" valueColor="text-destructive" trend={null} loading={loading} />
+        <KpiCard label="Empréstimos no Período" value={loansCurrent.length} icon={Wrench}        iconBg="bg-primary/10"     valueColor="text-primary"     trend={trendEmprestimos} loading={loading} />
+        <KpiCard label="Devolvidos no Período"   value={devolvidosPeriodo}   icon={ArrowDownCircle} iconBg="bg-success/10"   valueColor="text-success"     trend={trendDevolvidos}  loading={loading} />
+        <KpiCard label="Emprestadas Agora"       value={emprestadas}         icon={ArrowUpCircle} iconBg="bg-warning/10"     valueColor="text-warning"     trend={null} loading={loading} />
+        <KpiCard label="Em Atraso"               value={atrasados.length}    icon={AlertTriangle} iconBg="bg-destructive/10" valueColor="text-destructive" trend={null} loading={loading} />
+      </div>
+
+      <div className="bg-card rounded-2xl border border-border p-5">
+        <div className="mb-5">
+          <h2 className="font-semibold text-base">Empréstimos {period === 'ano' ? 'Mensais' : 'Diários'}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Empréstimos registados ao longo do período</p>
+        </div>
+        {loading ? (
+          <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">A carregar…</div>
+        ) : activityData.length === 0 ? (
+          <div className="h-64 flex flex-col items-center justify-center gap-2">
+            <TrendingUp className="w-8 h-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">Sem empréstimos no período selecionado</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={activityData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} interval="preserveStartEnd" tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip content={<ChartTooltip />} />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
+              <Line type="monotone" dataKey="Empréstimos" stroke="#1e3a8a" strokeWidth={2.5} dot={{ r: 3, fill: '#1e3a8a' }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
@@ -567,12 +618,12 @@ function ToolsReportSection() {
         <div className="lg:col-span-2 bg-card rounded-2xl border border-border overflow-hidden">
           <div className="px-5 py-4 border-b border-border bg-muted/30">
             <h2 className="font-semibold text-base">Top Funcionários</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Mais empréstimos registados</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Mais empréstimos no período</p>
           </div>
           {loading ? (
             <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
           ) : topFuncionarios.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">Sem dados</div>
+            <div className="p-8 text-center text-sm text-muted-foreground">Sem dados no período</div>
           ) : (
             <div className="divide-y divide-border">
               {topFuncionarios.map(f => (
@@ -595,7 +646,7 @@ function ToolsReportSection() {
             { label: 'Disponíveis',    value: disponiveis },
             { label: 'Emprestadas',    value: emprestadas },
             { label: 'Em Manutenção',  value: manutencao },
-            { label: 'Total de empréstimos registados', value: loans.length },
+            { label: 'Total de ferramentas', value: tools.length },
           ].map(row => (
             <div key={row.label} className="flex items-center justify-between px-5 py-3.5">
               <span className="text-sm text-muted-foreground">{row.label}</span>
@@ -637,6 +688,275 @@ function ToolsReportSection() {
   )
 }
 
+/* ─── PRINT REPORT — Ferramentas ─────────────────────────────────── */
+
+function ToolsPrintReport({ data, onClose }: { data: ToolsReportData; onClose: () => void }) {
+  useEffect(() => {
+    const s = document.createElement('style')
+    s.id = 'encivil-print-css-ferramentas'
+    s.textContent = `
+      @media print {
+        body > *:not(#encivil-print-root-ferramentas) { display: none !important; }
+        #encivil-print-root-ferramentas { display: block !important; position: static !important; overflow: visible !important; }
+        #encivil-print-root-ferramentas * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        .no-print { display: none !important; }
+        @page { margin: 12mm 15mm; size: A4 portrait; }
+      }
+    `
+    document.head.appendChild(s)
+    return () => { document.getElementById('encivil-print-css-ferramentas')?.remove() }
+  }, [])
+
+  const { tools, loansCurrent, loansPrevious, loansActive, periodLabel } = data
+
+  const disponiveis = tools.filter(t => t.status === 'disponivel').length
+  const emprestadas = tools.filter(t => t.status === 'emprestada').length
+  const manutencao  = tools.filter(t => t.status === 'manutencao').length
+  const atrasados   = loansActive.filter(l => l.expectedReturnDate && l.expectedReturnDate.getTime() < Date.now())
+  const devolvidosPeriodo     = loansCurrent.filter(l => l.status === 'devolvido').length
+  const devolvidosPeriodoPrev = loansPrevious.filter(l => l.status === 'devolvido').length
+  const trendEmprestimos = calcTrend(loansCurrent.length, loansPrevious.length)
+  const trendDevolvidos  = calcTrend(devolvidosPeriodo, devolvidosPeriodoPrev)
+  const activityData = useToolsActivityData(loansCurrent, data.period)
+  const topFuncionarios = useTopFuncionarios(loansCurrent)
+  const today = fmt(new Date())
+
+  const NAVY   = '#1e3a8a'
+  const GREEN  = '#16a34a'
+  const RED    = '#dc2626'
+  const AMBER  = '#f59e0b'
+  const SLATE  = '#64748b'
+  const LIGHT  = '#f8fafc'
+  const BORDER = '#e2e8f0'
+
+  const sectionTitle = (text: string) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+      <div style={{ width: 4, height: 20, background: NAVY, borderRadius: 2, flexShrink: 0 }} />
+      <span style={{ fontWeight: 700, fontSize: 13, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        {text}
+      </span>
+    </div>
+  )
+
+  const trendBadge = (t: ReturnType<typeof calcTrend>) => {
+    if (!t) return <span style={{ color: SLATE, fontSize: 11 }}>sem dados anteriores</span>
+    const color = t.dir === 'up' ? GREEN : t.dir === 'down' ? RED : SLATE
+    const arrow = t.dir === 'up' ? '▲' : t.dir === 'down' ? '▼' : '●'
+    return (
+      <span style={{ color, fontSize: 11, fontWeight: 700 }}>
+        {arrow} {t.pct}% vs período anterior
+      </span>
+    )
+  }
+
+  return createPortal(
+    <div
+      id="encivil-print-root-ferramentas"
+      style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 9999, overflowY: 'auto' }}
+    >
+      <div
+        className="no-print"
+        style={{
+          position: 'sticky', top: 0, zIndex: 10,
+          background: 'white', borderBottom: `1px solid ${BORDER}`,
+          padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FileText style={{ width: 16, height: 16, color: NAVY }} />
+          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
+            Pré-visualização · Relatório de Ferramentas ENCIVIL
+          </span>
+          <span style={{ fontSize: 12, color: SLATE, marginLeft: 8 }}>{periodLabel}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={onClose}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px',
+              border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13,
+              background: 'white', cursor: 'pointer', color: '#374151',
+            }}
+          >
+            <X style={{ width: 14, height: 14 }} /> Fechar
+          </button>
+          <button
+            onClick={() => window.print()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px',
+              background: NAVY, color: 'white', border: 'none', borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            <Printer style={{ width: 14, height: 14 }} /> Imprimir / Salvar PDF
+          </button>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 794, margin: '0 auto', background: 'white', padding: '0 0 40px' }}>
+
+        <div style={{ background: NAVY, color: 'white', padding: '24px 32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ background: 'white', borderRadius: 10, padding: 6, width: 52, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <img src="/icone_oficial.png" alt="ENCIVIL" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '0.02em' }}>ENCIVIL</div>
+                <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>Relatório de Ferramentas</div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>{periodLabel}</div>
+              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>Gerado em {today}</div>
+            </div>
+          </div>
+          <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.2)', display: 'flex', gap: 28, fontSize: 12, opacity: 0.8 }}>
+            <span>Empréstimos: <strong>{loansCurrent.length}</strong></span>
+            <span>Devolvidos: <strong style={{ color: '#86efac' }}>{devolvidosPeriodo}</strong></span>
+            <span>Emprestadas agora: <strong style={{ color: '#fde68a' }}>{emprestadas}</strong></span>
+            <span>Em atraso: <strong style={{ color: '#fca5a5' }}>{atrasados.length}</strong></span>
+          </div>
+        </div>
+
+        <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 32 }}>
+
+          <div>
+            {sectionTitle('Indicadores')}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+              {[
+                { label: 'Empréstimos no Período', value: loansCurrent.length, color: NAVY,  trend: trendEmprestimos },
+                { label: 'Devolvidos no Período',  value: devolvidosPeriodo,   color: GREEN, trend: trendDevolvidos  },
+                { label: 'Emprestadas Agora',      value: emprestadas,         color: AMBER, trend: null             },
+                { label: 'Em Atraso',              value: atrasados.length,    color: RED,   trend: null             },
+              ].map(k => (
+                <div key={k.label} style={{ border: `1px solid ${BORDER}`, borderRadius: 10, padding: '14px 16px', background: LIGHT }}>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: k.color, lineHeight: 1 }}>{k.value}</div>
+                  <div style={{ fontSize: 11, color: SLATE, marginTop: 6, lineHeight: 1.3, fontWeight: 500 }}>{k.label}</div>
+                  <div style={{ marginTop: 8 }}>{trendBadge(k.trend)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            {sectionTitle(`Empréstimos ${data.period === 'ano' ? 'Mensais' : 'Diários'}`)}
+            {activityData.length === 0 ? (
+              <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: LIGHT, borderRadius: 10, border: `1px solid ${BORDER}`, color: SLATE, fontSize: 13 }}>
+                Sem empréstimos no período selecionado
+              </div>
+            ) : (
+              <div style={{ border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px 8px 8px', background: 'white' }}>
+                <LineChart width={698} height={220} data={activityData} margin={{ top: 5, right: 16, left: -16, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={BORDER} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: SLATE }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                  <YAxis tick={{ fontSize: 11, fill: SLATE }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${BORDER}` }} />
+                  <Line type="monotone" dataKey="Empréstimos" stroke={NAVY} strokeWidth={2.5} dot={{ r: 3, fill: NAVY }} />
+                </LineChart>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 20 }}>
+            <div>
+              {sectionTitle('Ferramentas em Atraso')}
+              {atrasados.length === 0 ? (
+                <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', background: LIGHT, borderRadius: 10, border: `1px solid ${BORDER}`, color: SLATE, fontSize: 13 }}>
+                  Nenhuma ferramenta em atraso
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: NAVY, color: 'white' }}>
+                      {['Ferramenta', 'Funcionário', 'Em atraso desde'].map(h => (
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, fontSize: 11 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {atrasados.map((l, i) => (
+                      <tr key={l.id} style={{ background: i % 2 === 0 ? 'white' : LIGHT }}>
+                        <td style={{ padding: '8px 12px', borderBottom: `1px solid ${BORDER}` }}>{l.toolCode} · {l.toolName}</td>
+                        <td style={{ padding: '8px 12px', color: SLATE, borderBottom: `1px solid ${BORDER}` }}>{l.employeeName}</td>
+                        <td style={{ padding: '8px 12px', color: RED, fontWeight: 600, borderBottom: `1px solid ${BORDER}` }}>
+                          {l.expectedReturnDate?.toLocaleDateString('pt-PT')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div>
+              {sectionTitle('Top Funcionários')}
+              <div style={{ border: `1px solid ${BORDER}`, borderRadius: 10, padding: '16px', background: 'white' }}>
+                {topFuncionarios.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {topFuncionarios.map(f => (
+                      <div key={f.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                        <span style={{ color: SLATE }}>{f.name}</span>
+                        <span style={{ fontWeight: 700, color: '#1e293b' }}>{f.qty}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', color: SLATE, fontSize: 13 }}>
+                    Sem dados no período
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            {sectionTitle('Resumo Executivo')}
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: NAVY, color: 'white' }}>
+                  <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600, fontSize: 12 }}>Indicador</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 600, fontSize: 12 }}>Valor</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 600, fontSize: 12 }}>Tendência</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { label: 'Empréstimos no período', value: String(loansCurrent.length), trend: trendEmprestimos },
+                  { label: 'Devolvidos no período',  value: String(devolvidosPeriodo),   trend: trendDevolvidos  },
+                  { label: 'Disponíveis agora',      value: String(disponiveis),         trend: null },
+                  { label: 'Emprestadas agora',      value: String(emprestadas),         trend: null },
+                  { label: 'Em manutenção',          value: String(manutencao),          trend: null },
+                  { label: 'Total de ferramentas',   value: String(tools.length),        trend: null },
+                ].map((row, i) => (
+                  <tr key={row.label} style={{ background: i % 2 === 0 ? 'white' : LIGHT }}>
+                    <td style={{ padding: '10px 16px', color: '#374151', borderBottom: `1px solid ${BORDER}` }}>{row.label}</td>
+                    <td style={{ padding: '10px 16px', fontWeight: 700, color: '#1e293b', textAlign: 'right', borderBottom: `1px solid ${BORDER}` }}>{row.value}</td>
+                    <td style={{ padding: '10px 16px', textAlign: 'right', borderBottom: `1px solid ${BORDER}` }}>{trendBadge(row.trend)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={{
+          borderTop: `3px solid ${NAVY}`, margin: '0 32px', padding: '14px 0',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: SLATE,
+        }}>
+          <span>Gerado automaticamente pelo Sistema de Controlo de Armazém ENCIVIL</span>
+          <span style={{ fontWeight: 600 }}>© 2026 ENCIVIL</span>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 /* ─── Página principal ──────────────────────────────────────────── */
 
 export function ReportsPage() {
@@ -647,6 +967,14 @@ export function ReportsPage() {
   const [previous, setPrevious] = useState<Movement[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [showPrint, setShowPrint] = useState(false)
+
+  const [toolsPeriod, setToolsPeriod] = useState<Period>('mes')
+  const [toolsLoading, setToolsLoading] = useState(true)
+  const [tools, setTools] = useState<Tool[]>([])
+  const [loansCurrent,  setLoansCurrent]  = useState<ToolLoan[]>([])
+  const [loansPrevious, setLoansPrevious] = useState<ToolLoan[]>([])
+  const [loansActive,   setLoansActive]   = useState<ToolLoan[]>([])
+  const [showToolsPrint, setShowToolsPrint] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -665,6 +993,25 @@ export function ReportsPage() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [period])
+
+  useEffect(() => {
+    let cancelled = false
+    setToolsLoading(true)
+    const { currFrom, prevFrom, prevTo } = getPeriodConfig(toolsPeriod)
+    Promise.all([
+      listarFerramentas(false),
+      listarEmprestimos({ dataInicio: currFrom }),
+      listarEmprestimos({ dataInicio: prevFrom, dataFim: prevTo }),
+      listarEmprestimos({ estado: 'ativo' }),
+    ])
+      .then(([t, curr, prev, active]) => {
+        if (cancelled) return
+        setTools(t); setLoansCurrent(curr); setLoansPrevious(prev); setLoansActive(active)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setToolsLoading(false) })
+    return () => { cancelled = true }
+  }, [toolsPeriod])
 
   /* Valores derivados */
   const currEntries = useMemo(() => current.filter(m => m.type === 'entrada').length, [current])
@@ -738,8 +1085,8 @@ export function ReportsPage() {
               </p>
             </div>
           </div>
-          {reportType === 'stock' && (
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {reportType === 'stock' ? (
               <select
                 value={period}
                 onChange={e => setPeriod(e.target.value as Period)}
@@ -750,18 +1097,31 @@ export function ReportsPage() {
                 <option value="mes"    className="text-foreground bg-card">Este Mês</option>
                 <option value="ano"    className="text-foreground bg-card">Este Ano</option>
               </select>
-              <button
-                onClick={() => setShowPrint(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium transition-colors"
+            ) : (
+              <select
+                value={toolsPeriod}
+                onChange={e => setToolsPeriod(e.target.value as Period)}
+                className="px-3 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
               >
-                <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Exportar PDF</span>
-              </button>
-            </div>
-          )}
+                <option value="hoje"   className="text-foreground bg-card">Hoje</option>
+                <option value="semana" className="text-foreground bg-card">Esta Semana</option>
+                <option value="mes"    className="text-foreground bg-card">Este Mês</option>
+                <option value="ano"    className="text-foreground bg-card">Este Ano</option>
+              </select>
+            )}
+            <button
+              onClick={() => reportType === 'stock' ? setShowPrint(true) : setShowToolsPrint(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium transition-colors"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden sm:inline">Exportar PDF</span>
+            </button>
+          </div>
         </div>
         <p className="text-white/60 text-xs mt-3">
-          {reportType === 'stock' ? `${periodLabel} · comparado com ${prevLabel}` : 'Inventário e empréstimos de ferramentas'}
+          {reportType === 'stock'
+            ? `${periodLabel} · comparado com ${prevLabel}`
+            : `${getPeriodConfig(toolsPeriod).label} · comparado com ${getPeriodConfig(toolsPeriod).prevLabel}`}
         </p>
       </div>
 
@@ -785,7 +1145,18 @@ export function ReportsPage() {
         </button>
       </div>
 
-      {reportType === 'ferramentas' && <ToolsReportSection />}
+      {reportType === 'ferramentas' && (
+        <ToolsReportSection
+          loading={toolsLoading}
+          tools={tools}
+          loansCurrent={loansCurrent}
+          loansPrevious={loansPrevious}
+          loansActive={loansActive}
+          period={toolsPeriod}
+          periodLabel={getPeriodConfig(toolsPeriod).label}
+          prevLabel={getPeriodConfig(toolsPeriod).prevLabel}
+        />
+      )}
 
       {reportType === 'stock' && (
       <>
@@ -925,6 +1296,18 @@ export function ReportsPage() {
         />
       )}
       </>
+      )}
+
+      {showToolsPrint && (
+        <ToolsPrintReport
+          data={{
+            loading: toolsLoading, tools, loansCurrent, loansPrevious, loansActive,
+            period: toolsPeriod,
+            periodLabel: getPeriodConfig(toolsPeriod).label,
+            prevLabel: getPeriodConfig(toolsPeriod).prevLabel,
+          }}
+          onClose={() => setShowToolsPrint(false)}
+        />
       )}
     </div>
   )
