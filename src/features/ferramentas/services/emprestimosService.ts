@@ -19,6 +19,8 @@ type EmprestimoRow = {
   responsavel_recebimento: string | null
   assinatura_entrega: string | null
   assinatura_devolucao: string | null
+  assinatura_responsavel_entrega: string | null
+  assinatura_responsavel_devolucao: string | null
   ferramentas: { nome: string; codigo: string } | null
 }
 
@@ -43,6 +45,8 @@ function toLoan(row: EmprestimoRow): ToolLoan {
     receivedBy: row.responsavel_recebimento ?? undefined,
     deliverySignature: row.assinatura_entrega ?? undefined,
     returnSignature: row.assinatura_devolucao ?? undefined,
+    deliveredBySignature: row.assinatura_responsavel_entrega ?? undefined,
+    receivedBySignature: row.assinatura_responsavel_devolucao ?? undefined,
   }
 }
 
@@ -118,6 +122,7 @@ export type RegistarEmprestimoInput = {
   employeeName: string
   deliveredBy: string
   signature: string
+  responsibleSignature: string
   employeeDocument?: string
   destination?: string
   expectedReturnDate?: string
@@ -151,7 +156,10 @@ export async function registarEmprestimo(input: RegistarEmprestimoInput): Promis
   const loanId = (data as EmprestimoRow).id
   const { error: sigError } = await supabase
     .from('emprestimos_ferramentas')
-    .update({ assinatura_entrega: input.signature })
+    .update({
+      assinatura_entrega: input.signature,
+      assinatura_responsavel_entrega: input.responsibleSignature,
+    })
     .eq('id', loanId)
   if (sigError) throw sigError
 
@@ -163,6 +171,7 @@ export type RegistarDevolucaoInput = {
   returnCondition: ReturnCondition
   receivedBy: string
   signature: string
+  responsibleSignature: string
   returnNotes?: string
 }
 
@@ -178,7 +187,10 @@ export async function registarDevolucao(input: RegistarDevolucaoInput): Promise<
   const loanId = (data as EmprestimoRow).id
   const { error: sigError } = await supabase
     .from('emprestimos_ferramentas')
-    .update({ assinatura_devolucao: input.signature })
+    .update({
+      assinatura_devolucao: input.signature,
+      assinatura_responsavel_devolucao: input.responsibleSignature,
+    })
     .eq('id', loanId)
   if (sigError) throw sigError
 

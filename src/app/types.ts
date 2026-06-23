@@ -93,6 +93,8 @@ export interface ToolLoan {
   receivedBy?: string;
   deliverySignature?: string;
   returnSignature?: string;
+  deliveredBySignature?: string;
+  receivedBySignature?: string;
 }
 
 export interface DashboardStats {

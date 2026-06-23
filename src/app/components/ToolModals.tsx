@@ -157,6 +157,7 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
     notes: '',
   });
   const [signature, setSignature] = useState<string | null>(null);
+  const [responsibleSignature, setResponsibleSignature] = useState<string | null>(null);
 
   useEffect(() => {
     if (nome) setFormData(prev => ({ ...prev, deliveredBy: prev.deliveredBy || nome }));
@@ -166,11 +167,13 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
     e.preventDefault();
     if (!formData.toolId) { toast.error('Selecione uma ferramenta.'); return; }
     if (!signature) { toast.error('A assinatura do funcionário é obrigatória.'); return; }
+    if (!responsibleSignature) { toast.error('A assinatura de quem está a entregar é obrigatória.'); return; }
     const result = await registar({
       toolId: formData.toolId,
       employeeName: formData.employeeName,
       deliveredBy: formData.deliveredBy,
       signature,
+      responsibleSignature,
       employeeDocument: formData.employeeDocument || undefined,
       destination: formData.destination || undefined,
       expectedReturnDate: formData.expectedReturnDate || undefined,
@@ -230,8 +233,13 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
             value={signature}
             onChange={setSignature}
           />
+          <SignaturePad
+            label="Assinatura de Quem Entrega (operador do sistema)"
+            value={responsibleSignature}
+            onChange={setResponsibleSignature}
+          />
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={loading || !signature} className="flex-1 py-3.5 bg-warning text-white rounded-xl font-bold hover:bg-warning/90 active:scale-[0.98] transition-all disabled:opacity-60">
+            <button type="submit" disabled={loading || !signature || !responsibleSignature} className="flex-1 py-3.5 bg-warning text-white rounded-xl font-bold hover:bg-warning/90 active:scale-[0.98] transition-all disabled:opacity-60">
               {loading ? 'A registar…' : 'Confirmar Empréstimo'}
             </button>
             <button type="button" onClick={onClose} disabled={loading} className="flex-1 py-3.5 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 active:scale-[0.98] transition-all">
@@ -265,6 +273,7 @@ export function ReturnToolModal({ loan, onClose, onSuccess }: {
     notes: '',
   });
   const [signature, setSignature] = useState<string | null>(null);
+  const [responsibleSignature, setResponsibleSignature] = useState<string | null>(null);
 
   useEffect(() => {
     if (nome) setFormData(prev => ({ ...prev, receivedBy: prev.receivedBy || nome }));
@@ -273,11 +282,13 @@ export function ReturnToolModal({ loan, onClose, onSuccess }: {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signature) { toast.error('A assinatura do funcionário é obrigatória.'); return; }
+    if (!responsibleSignature) { toast.error('A assinatura de quem está a receber é obrigatória.'); return; }
     const result = await devolver({
       loanId: loan.id,
       returnCondition: formData.returnCondition,
       receivedBy: formData.receivedBy,
       signature,
+      responsibleSignature,
       returnNotes: formData.notes || undefined,
     });
     if (result) {
@@ -323,8 +334,13 @@ export function ReturnToolModal({ loan, onClose, onSuccess }: {
             value={signature}
             onChange={setSignature}
           />
+          <SignaturePad
+            label="Assinatura de Quem Recebe (operador do sistema)"
+            value={responsibleSignature}
+            onChange={setResponsibleSignature}
+          />
           <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={loading || !signature} className="flex-1 py-3.5 bg-success text-success-foreground rounded-xl font-bold hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-60">
+            <button type="submit" disabled={loading || !signature || !responsibleSignature} className="flex-1 py-3.5 bg-success text-success-foreground rounded-xl font-bold hover:bg-success/90 active:scale-[0.98] transition-all disabled:opacity-60">
               {loading ? 'A registar…' : 'Confirmar Devolução'}
             </button>
             <button type="button" onClick={onClose} disabled={loading} className="flex-1 py-3.5 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 active:scale-[0.98] transition-all">

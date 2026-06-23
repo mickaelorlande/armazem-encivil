@@ -205,7 +205,7 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
         {sectionTitle('Assinatura na Entrega')}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
           {signatureBlock(loan.employeeName, 'O Utilizador', loan.deliverySignature)}
-          {signatureBlock(loan.deliveredBy, 'Pela Empresa', undefined)}
+          {signatureBlock(loan.deliveredBy, 'Pela Empresa', loan.deliveredBySignature)}
         </div>
 
         {/* Secção de devolução — só aparece se já tiver sido devolvida */}
@@ -225,7 +225,7 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
 
             <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
               {signatureBlock(loan.employeeName, 'O Utilizador (Devolução)', loan.returnSignature)}
-              {signatureBlock(loan.receivedBy ?? '—', 'Pela Empresa (Devolução)', undefined)}
+              {signatureBlock(loan.receivedBy ?? '—', 'Pela Empresa (Devolução)', loan.receivedBySignature)}
             </div>
           </>
         )}
