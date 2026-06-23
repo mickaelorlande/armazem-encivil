@@ -7,6 +7,7 @@ import {
   FileBarChart,
   Settings,
   CircleHelp,
+  Wrench,
   X,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
@@ -14,6 +15,7 @@ import { useRole } from '@/features/auth/useRole';
 const allMenuItems = [
   { path: '/',               label: 'Dashboard',     icon: LayoutDashboard, adminOnly: false },
   { path: '/produtos',       label: 'Produtos',       icon: Package,         adminOnly: false },
+  { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench,          adminOnly: false },
   { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus,            adminOnly: false },
   { path: '/historico',      label: 'Histórico',      icon: History,         adminOnly: false },
   { path: '/relatorios',     label: 'Relatórios',     icon: FileBarChart,    adminOnly: false },

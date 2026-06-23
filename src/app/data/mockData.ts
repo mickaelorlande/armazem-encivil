@@ -241,3 +241,33 @@ export const getUnitLabel = (unit: string): string => {
   };
   return labels[unit] || unit;
 };
+
+export const getToolCategoryLabel = (category: string): string => {
+  const labels: Record<string, string> = {
+    'manual': 'Ferramenta Manual',
+    'eletrica': 'Ferramenta Elétrica',
+    'medicao': 'Medição',
+    'seguranca': 'Equipamento de Segurança',
+    'outro': 'Outro',
+  };
+  return labels[category] || category;
+};
+
+export const getToolStatusLabel = (status: string): string => {
+  const labels: Record<string, string> = {
+    'disponivel': 'Disponível',
+    'emprestada': 'Emprestada',
+    'manutencao': 'Em Manutenção',
+    'inativa': 'Inativa',
+  };
+  return labels[status] || status;
+};
+
+export const getReturnConditionLabel = (condition: string): string => {
+  const labels: Record<string, string> = {
+    'bom_estado': 'Bom Estado',
+    'danificada': 'Danificada',
+    'perdida': 'Perdida/Extraviada',
+  };
+  return labels[condition] || condition;
+};

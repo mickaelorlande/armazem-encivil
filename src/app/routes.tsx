@@ -82,6 +82,8 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
+import { ToolsPage } from './pages/ToolsPage';
+import { ToolDetailPage } from './pages/ToolDetailPage';
 import { NewMovementPage } from './pages/NewMovementPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -107,6 +109,8 @@ export const router = createBrowserRouter([
           { index: true,           element: <DashboardPage /> },
           { path: 'produtos',      element: <ProductsPage /> },
           { path: 'produtos/:id',  element: <ProductDetailPage /> },
+          { path: 'ferramentas',     element: <ToolsPage /> },
+          { path: 'ferramentas/:id', element: <ToolDetailPage /> },
           { path: 'novo-movimento', element: <NewMovementPage /> },
           { path: 'historico',     element: <HistoryPage /> },
           { path: 'relatorios',    element: <ReportsPage /> },

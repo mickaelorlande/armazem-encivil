@@ -7,11 +7,15 @@ import {
 import {
   BarChart3, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle,
   AlertTriangle, Printer, ChevronUp, ChevronDown, Minus, X, FileText,
+  Wrench, Boxes,
 } from 'lucide-react'
 import { listarMovimentos } from '@/features/movimentos/services/movimentosService'
 import { listarProdutos } from '@/features/produtos/services/produtosService'
-import { getUnitLabel } from '../data/mockData'
-import type { Movement, Product } from '../types'
+import { listarFerramentas } from '@/features/ferramentas/services/ferramentasService'
+import { listarEmprestimos } from '@/features/ferramentas/services/emprestimosService'
+import { getUnitLabel, getToolCategoryLabel } from '../data/mockData'
+import { ToolStatusBadge } from '../components/ToolStatusBadge'
+import type { Movement, Product, Tool, ToolLoan } from '../types'
 
 /* ─── Tipos e helpers ───────────────────────────────────────────── */
 
@@ -491,9 +495,152 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
   )
 }
 
+/* ─── Relatório de Ferramentas ──────────────────────────────────── */
+
+function ToolsReportSection() {
+  const [loading, setLoading] = useState(true)
+  const [tools, setTools] = useState<Tool[]>([])
+  const [loans, setLoans] = useState<ToolLoan[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    Promise.all([listarFerramentas(false), listarEmprestimos({})])
+      .then(([t, l]) => { if (!cancelled) { setTools(t); setLoans(l) } })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const disponiveis = tools.filter(t => t.status === 'disponivel').length
+  const emprestadas = tools.filter(t => t.status === 'emprestada').length
+  const manutencao  = tools.filter(t => t.status === 'manutencao').length
+
+  const ativos = loans.filter(l => l.status === 'ativo')
+  const atrasados = ativos.filter(l => l.expectedReturnDate && l.expectedReturnDate.getTime() < Date.now())
+
+  const topFuncionarios = useMemo(() => {
+    const counts = new Map<string, number>()
+    loans.forEach(l => counts.set(l.employeeName, (counts.get(l.employeeName) ?? 0) + 1))
+    return Array.from(counts.entries())
+      .map(([name, qty]) => ({ name, qty }))
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 5)
+  }, [loans])
+
+  return (
+    <div className="space-y-6 pb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <KpiCard label="Total de Ferramentas" value={tools.length} icon={Wrench}        iconBg="bg-primary/10"     valueColor="text-primary"     trend={null} loading={loading} />
+        <KpiCard label="Disponíveis"           value={disponiveis}  icon={Boxes}         iconBg="bg-success/10"     valueColor="text-success"     trend={null} loading={loading} />
+        <KpiCard label="Emprestadas"           value={emprestadas}  icon={ArrowUpCircle} iconBg="bg-warning/10"     valueColor="text-warning"     trend={null} loading={loading} />
+        <KpiCard label="Em Atraso"             value={atrasados.length} icon={AlertTriangle} iconBg="bg-destructive/10" valueColor="text-destructive" trend={null} loading={loading} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
+        <div className="lg:col-span-3 bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-muted/30">
+            <h2 className="font-semibold text-base">Ferramentas em Atraso</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Empréstimos ativos com devolução prevista já passada</p>
+          </div>
+          {loading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+          ) : atrasados.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma ferramenta em atraso 🎉</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {atrasados.map(l => (
+                <div key={l.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">{l.toolCode} · {l.toolName}</p>
+                    <p className="text-xs text-muted-foreground">{l.employeeName}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-destructive">
+                    desde {l.expectedReturnDate?.toLocaleDateString('pt-PT')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="lg:col-span-2 bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-muted/30">
+            <h2 className="font-semibold text-base">Top Funcionários</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Mais empréstimos registados</p>
+          </div>
+          {loading ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+          ) : topFuncionarios.length === 0 ? (
+            <div className="p-8 text-center text-sm text-muted-foreground">Sem dados</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {topFuncionarios.map(f => (
+                <div key={f.name} className="px-5 py-3 flex items-center justify-between">
+                  <span className="text-sm">{f.name}</span>
+                  <span className="text-sm font-bold">{f.qty}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border bg-muted/30">
+          <h2 className="font-semibold text-base">Resumo do Inventário</h2>
+        </div>
+        <div className="divide-y divide-border">
+          {[
+            { label: 'Disponíveis',    value: disponiveis },
+            { label: 'Emprestadas',    value: emprestadas },
+            { label: 'Em Manutenção',  value: manutencao },
+            { label: 'Total de empréstimos registados', value: loans.length },
+          ].map(row => (
+            <div key={row.label} className="flex items-center justify-between px-5 py-3.5">
+              <span className="text-sm text-muted-foreground">{row.label}</span>
+              <span className="text-sm font-semibold">{loading ? '…' : row.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {!loading && tools.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-muted/30">
+            <h2 className="font-semibold text-base">Inventário Completo</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  {['Código', 'Ferramenta', 'Categoria', 'Estado'].map(h => (
+                    <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {tools.map(t => (
+                  <tr key={t.id}>
+                    <td className="px-5 py-3 text-sm font-mono text-muted-foreground">{t.code}</td>
+                    <td className="px-5 py-3 text-sm font-medium">{t.name}</td>
+                    <td className="px-5 py-3 text-sm text-muted-foreground">{getToolCategoryLabel(t.category)}</td>
+                    <td className="px-5 py-3 text-sm"><ToolStatusBadge status={t.status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ─── Página principal ──────────────────────────────────────────── */
 
 export function ReportsPage() {
+  const [reportType, setReportType] = useState<'stock' | 'ferramentas'>('stock')
   const [period, setPeriod]   = useState<Period>('mes')
   const [loading, setLoading] = useState(true)
   const [current,  setCurrent]  = useState<Movement[]>([])
@@ -586,32 +733,62 @@ export function ReportsPage() {
             </div>
             <div>
               <h1 className="text-lg md:text-xl font-bold leading-tight">Relatório Executivo</h1>
-              <p className="text-white/70 text-sm mt-0.5">Análise de armazém · ENCIVIL</p>
+              <p className="text-white/70 text-sm mt-0.5">
+                {reportType === 'stock' ? 'Análise de armazém' : 'Análise de ferramentas'} · ENCIVIL
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <select
-              value={period}
-              onChange={e => setPeriod(e.target.value as Period)}
-              className="px-3 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-            >
-              <option value="hoje"   className="text-foreground bg-card">Hoje</option>
-              <option value="semana" className="text-foreground bg-card">Esta Semana</option>
-              <option value="mes"    className="text-foreground bg-card">Este Mês</option>
-              <option value="ano"    className="text-foreground bg-card">Este Ano</option>
-            </select>
-            <button
-              onClick={() => setShowPrint(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium transition-colors"
-            >
-              <Printer className="w-4 h-4" />
-              <span className="hidden sm:inline">Exportar PDF</span>
-            </button>
-          </div>
+          {reportType === 'stock' && (
+            <div className="flex items-center gap-2">
+              <select
+                value={period}
+                onChange={e => setPeriod(e.target.value as Period)}
+                className="px-3 py-2 bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/50"
+              >
+                <option value="hoje"   className="text-foreground bg-card">Hoje</option>
+                <option value="semana" className="text-foreground bg-card">Esta Semana</option>
+                <option value="mes"    className="text-foreground bg-card">Este Mês</option>
+                <option value="ano"    className="text-foreground bg-card">Este Ano</option>
+              </select>
+              <button
+                onClick={() => setShowPrint(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                <span className="hidden sm:inline">Exportar PDF</span>
+              </button>
+            </div>
+          )}
         </div>
-        <p className="text-white/60 text-xs mt-3">{periodLabel} · comparado com {prevLabel}</p>
+        <p className="text-white/60 text-xs mt-3">
+          {reportType === 'stock' ? `${periodLabel} · comparado com ${prevLabel}` : 'Inventário e empréstimos de ferramentas'}
+        </p>
       </div>
 
+      {/* ── Switcher Stock / Ferramentas ──────────────────── */}
+      <div className="flex gap-2 bg-card rounded-2xl border border-border p-1.5 w-fit">
+        <button
+          onClick={() => setReportType('stock')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            reportType === 'stock' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Boxes className="w-4 h-4" /> Stock
+        </button>
+        <button
+          onClick={() => setReportType('ferramentas')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            reportType === 'ferramentas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Wrench className="w-4 h-4" /> Ferramentas
+        </button>
+      </div>
+
+      {reportType === 'ferramentas' && <ToolsReportSection />}
+
+      {reportType === 'stock' && (
+      <>
       {/* ── KPIs ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <KpiCard label="Total de Movimentos" value={current.length} icon={BarChart3}       iconBg="bg-primary/10"     valueColor="text-primary"     trend={trendTotal}   loading={loading} />
@@ -746,6 +923,8 @@ export function ReportsPage() {
           }}
           onClose={() => setShowPrint(false)}
         />
+      )}
+      </>
       )}
     </div>
   )

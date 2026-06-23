@@ -14,6 +14,8 @@ export function SettingsPage() {
     nomeEmpresa:        '',
     responsavelArmazem: '',
     stockMinimoPadrao:  '10',
+    nifEmpresa:         '',
+    sedeEmpresa:        '',
   });
 
   useEffect(() => {
@@ -22,6 +24,8 @@ export function SettingsPage() {
         nomeEmpresa:        config.nomeEmpresa,
         responsavelArmazem: config.responsavelArmazem ?? '',
         stockMinimoPadrao:  String(config.stockMinimoPadrao),
+        nifEmpresa:         config.nifEmpresa ?? '',
+        sedeEmpresa:        config.sedeEmpresa ?? '',
       });
     }
   }, [config]);
@@ -32,6 +36,8 @@ export function SettingsPage() {
       nomeEmpresa:        formData.nomeEmpresa,
       responsavelArmazem: formData.responsavelArmazem || null,
       stockMinimoPadrao:  parseFloat(formData.stockMinimoPadrao) || 10,
+      nifEmpresa:         formData.nifEmpresa || null,
+      sedeEmpresa:        formData.sedeEmpresa || null,
     });
     if (ok) toast.success('Configurações guardadas com sucesso!');
     else    toast.error('Erro ao guardar configurações.');
@@ -124,6 +130,27 @@ export function SettingsPage() {
                 onChange={e => setFormData({ ...formData, responsavelArmazem: e.target.value })}
                 className={inputCls}
                 placeholder="Nome do responsável"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">NIF da Empresa</label>
+              <input
+                type="text"
+                value={formData.nifEmpresa}
+                onChange={e => setFormData({ ...formData, nifEmpresa: e.target.value })}
+                className={inputCls}
+                placeholder="Ex: 500123456"
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">Usado no cabeçalho do Termo de Responsabilidade de ferramentas.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Sede da Empresa</label>
+              <input
+                type="text"
+                value={formData.sedeEmpresa}
+                onChange={e => setFormData({ ...formData, sedeEmpresa: e.target.value })}
+                className={inputCls}
+                placeholder="Endereço completo da sede"
               />
             </div>
           </div>

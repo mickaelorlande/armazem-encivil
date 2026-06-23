@@ -6,6 +6,8 @@ export type Configuracoes = {
   logoUrl: string | null
   responsavelArmazem: string | null
   stockMinimoPadrao: number
+  nifEmpresa: string | null
+  sedeEmpresa: string | null
 }
 
 type ConfigRow = {
@@ -14,6 +16,8 @@ type ConfigRow = {
   logo_url: string | null
   responsavel_armazem: string | null
   stock_minimo_padrao: number
+  nif_empresa: string | null
+  sede_empresa: string | null
 }
 
 function toConfig(row: ConfigRow): Configuracoes {
@@ -23,6 +27,8 @@ function toConfig(row: ConfigRow): Configuracoes {
     logoUrl: row.logo_url,
     responsavelArmazem: row.responsavel_armazem,
     stockMinimoPadrao: row.stock_minimo_padrao,
+    nifEmpresa: row.nif_empresa,
+    sedeEmpresa: row.sede_empresa,
   }
 }
 
@@ -40,6 +46,8 @@ export type AtualizarConfiguracoes = {
   nomeEmpresa?: string
   responsavelArmazem?: string | null
   stockMinimoPadrao?: number
+  nifEmpresa?: string | null
+  sedeEmpresa?: string | null
 }
 
 export async function atualizarConfiguracoes(
@@ -50,6 +58,8 @@ export async function atualizarConfiguracoes(
   if (input.nomeEmpresa !== undefined) update.nome_empresa = input.nomeEmpresa
   if (input.responsavelArmazem !== undefined) update.responsavel_armazem = input.responsavelArmazem
   if (input.stockMinimoPadrao !== undefined) update.stock_minimo_padrao = input.stockMinimoPadrao
+  if (input.nifEmpresa !== undefined) update.nif_empresa = input.nifEmpresa
+  if (input.sedeEmpresa !== undefined) update.sede_empresa = input.sedeEmpresa
 
   const { data, error } = await supabase
     .from('configuracoes_empresa')

@@ -47,6 +47,52 @@ export interface Movement {
 
 export type LowStockItem = Pick<Product, 'id' | 'name' | 'unit' | 'currentStock' | 'minStock' | 'status'>;
 
+export type ToolCategory =
+  | 'manual'
+  | 'eletrica'
+  | 'medicao'
+  | 'seguranca'
+  | 'outro';
+
+export type ToolStatus = 'disponivel' | 'emprestada' | 'manutencao' | 'inativa';
+
+export interface Tool {
+  id: string;
+  code: string;
+  name: string;
+  category: ToolCategory;
+  serialNumber?: string;
+  estimatedValue?: number;
+  status: ToolStatus;
+  notes?: string;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type LoanStatus = 'ativo' | 'devolvido';
+export type ReturnCondition = 'bom_estado' | 'danificada' | 'perdida';
+
+export interface ToolLoan {
+  id: string;
+  toolId: string;
+  toolName: string;
+  toolCode: string;
+  employeeName: string;
+  employeeDocument?: string;
+  destination?: string;
+  loanDate: Date;
+  expectedReturnDate?: Date;
+  returnDate?: Date;
+  status: LoanStatus;
+  deliveryCondition?: string;
+  returnCondition?: ReturnCondition;
+  notes?: string;
+  returnNotes?: string;
+  deliveredBy: string;
+  receivedBy?: string;
+}
+
 export interface DashboardStats {
   totalProducts: number;
   todayEntries: number;
