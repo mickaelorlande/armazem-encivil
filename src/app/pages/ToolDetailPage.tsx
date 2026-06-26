@@ -1,11 +1,10 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useLocation } from 'react-router';
 import {
   ArrowLeft, Wrench, Pencil, MoreVertical, Archive, FileText, Undo2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ToolStatusBadge } from '../components/ToolStatusBadge';
-import { ToolFormModal, LoanToolModal, ReturnToolModal } from '../components/ToolModals';
 import { ToolLoanTermPrint } from '../components/ToolLoanTermPrint';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { getToolCategoryLabel } from '../data/mockData';
@@ -15,11 +14,12 @@ import { useConfiguracoes } from '@/features/configuracoes/hooks/useConfiguracoe
 import { useRole } from '@/features/auth/useRole';
 import type { ToolLoan } from '../types';
 
-type Modal = 'edit' | 'loan' | 'return' | 'archive' | null;
+type Modal = 'archive' | null;
 
 export function ToolDetailPage() {
   const { id }      = useParams();
   const navigate    = useNavigate();
+  const location    = useLocation();
   const { isAdmin, isGestor } = useRole();
   const canOperate  = isAdmin || isGestor;
 
@@ -31,7 +31,9 @@ export function ToolDetailPage() {
   const { arquivar, loading: archiving } = useArquivarFerramenta();
 
   const [modal, setModal] = useState<Modal>(null);
-  const [termLoan, setTermLoan] = useState<ToolLoan | null>(null);
+  const [termLoan, setTermLoan] = useState<ToolLoan | null>(
+    (location.state as { termLoan?: ToolLoan } | null)?.termLoan ?? null
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -47,6 +49,15 @@ export function ToolDetailPage() {
   const activeLoan = loans.find(l => l.status === 'ativo');
 
   const reloadAll = () => { reload(); reloadLoans(); };
+
+  // Limpa o state da navegação para o termo não reabrir num "voltar" do browser
+  useEffect(() => {
+    if (location.state) {
+      reloadAll();
+      window.history.replaceState({}, '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleArchive = async () => {
     if (!id) return;
@@ -97,7 +108,7 @@ export function ToolDetailPage() {
 
         {isAdmin && (
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => setModal('edit')} className="flex items-center gap-1.5 px-3.5 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors text-sm font-semibold">
+            <button onClick={() => navigate(`/ferramentas/${tool.id}/editar`)} className="flex items-center gap-1.5 px-3.5 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors text-sm font-semibold">
               <Pencil className="w-4 h-4" />
               <span className="hidden sm:inline">Editar</span>
             </button>
@@ -127,7 +138,7 @@ export function ToolDetailPage() {
         <div className="grid grid-cols-1 gap-3">
           {tool.status === 'disponivel' && (
             <button
-              onClick={() => setModal('loan')}
+              onClick={() => navigate(`/ferramentas/emprestimo?ferramenta=${tool.id}`)}
               className="flex items-center justify-center gap-2 py-3.5 bg-warning text-white rounded-xl font-semibold text-sm hover:bg-warning/90 active:scale-[0.98] transition-all shadow-sm"
             >
               <Wrench className="w-5 h-5" />
@@ -136,7 +147,7 @@ export function ToolDetailPage() {
           )}
           {tool.status === 'emprestada' && activeLoan && (
             <button
-              onClick={() => setModal('return')}
+              onClick={() => navigate(`/ferramentas/${tool.id}/devolucao`)}
               className="flex items-center justify-center gap-2 py-3.5 bg-success text-success-foreground rounded-xl font-semibold text-sm hover:bg-success/90 active:scale-[0.98] transition-all shadow-sm"
             >
               <Undo2 className="w-5 h-5" />
@@ -234,15 +245,6 @@ export function ToolDetailPage() {
       </div>
 
       {/* Modais */}
-      {modal === 'edit' && (
-        <ToolFormModal tool={tool} onClose={() => setModal(null)} onSuccess={() => { setModal(null); reload(); }} />
-      )}
-      {modal === 'loan' && (
-        <LoanToolModal tools={[tool]} tool={tool} onClose={() => setModal(null)} onSuccess={loan => { setModal(null); reloadAll(); setTermLoan(loan); }} />
-      )}
-      {modal === 'return' && activeLoan && (
-        <ReturnToolModal loan={activeLoan} onClose={() => setModal(null)} onSuccess={loan => { setModal(null); reloadAll(); setTermLoan(loan); }} />
-      )}
       {termLoan && (
         <ToolLoanTermPrint loan={termLoan} tool={tool} config={config} onClose={() => setTermLoan(null)} />
       )}

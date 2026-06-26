@@ -84,6 +84,9 @@ import { ProductsPage } from './pages/ProductsPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
 import { ToolsPage } from './pages/ToolsPage';
 import { ToolDetailPage } from './pages/ToolDetailPage';
+import { ToolFormPage } from './pages/ToolFormPage';
+import { ToolLoanPage } from './pages/ToolLoanPage';
+import { ToolReturnPage } from './pages/ToolReturnPage';
 import { NewMovementPage } from './pages/NewMovementPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -109,8 +112,12 @@ export const router = createBrowserRouter([
           { index: true,           element: <DashboardPage /> },
           { path: 'produtos',      element: <ProductsPage /> },
           { path: 'produtos/:id',  element: <ProductDetailPage /> },
-          { path: 'ferramentas',     element: <ToolsPage /> },
-          { path: 'ferramentas/:id', element: <ToolDetailPage /> },
+          { path: 'ferramentas',             element: <ToolsPage /> },
+          { path: 'ferramentas/nova',         element: <ToolFormPage /> },
+          { path: 'ferramentas/emprestimo',   element: <ToolLoanPage /> },
+          { path: 'ferramentas/:id',          element: <ToolDetailPage /> },
+          { path: 'ferramentas/:id/editar',    element: <ToolFormPage /> },
+          { path: 'ferramentas/:id/devolucao', element: <ToolReturnPage /> },
           { path: 'novo-movimento', element: <NewMovementPage /> },
           { path: 'historico',     element: <HistoryPage /> },
           { path: 'relatorios',    element: <ReportsPage /> },

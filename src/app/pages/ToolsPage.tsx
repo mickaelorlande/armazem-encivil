@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router';
 import {
   Plus, Search, Wrench, ChevronRight, RotateCcw, Archive,
   History, FileText, Undo2,
@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { ToolStatusBadge } from '../components/ToolStatusBadge';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { ToolFormModal, LoanToolModal, ReturnToolModal } from '../components/ToolModals';
 import { ToolLoanTermPrint } from '../components/ToolLoanTermPrint';
 import { getToolCategoryLabel } from '../data/mockData';
 import {
@@ -19,7 +18,7 @@ import {
 import { useEmprestimos } from '@/features/ferramentas/hooks/useEmprestimos';
 import { useConfiguracoes } from '@/features/configuracoes/hooks/useConfiguracoes';
 import { useRole } from '@/features/auth/useRole';
-import type { Tool, ToolStatus, ToolLoan } from '../types';
+import type { ToolStatus, ToolLoan } from '../types';
 
 type Tab = 'catalogo' | 'historico' | 'arquivadas';
 type StatusFilter = 'todos' | ToolStatus;
@@ -34,6 +33,7 @@ const statusFilters: { value: StatusFilter; label: string; cls: string }[] = [
 
 export function ToolsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAdmin, isGestor } = useRole();
   const canOperate = isAdmin || isGestor;
 
@@ -43,10 +43,9 @@ export function ToolsPage() {
   const [loanFilter, setLoanFilter] = useState<LoanFilter>('ativo');
   const [employeeSearch, setEmployeeSearch] = useState('');
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [loanTool, setLoanTool] = useState<Tool | 'pick' | null>(null);
-  const [returnLoan, setReturnLoan] = useState<ToolLoan | null>(null);
-  const [termLoan, setTermLoan] = useState<ToolLoan | null>(null);
+  const [termLoan, setTermLoan] = useState<ToolLoan | null>(
+    (location.state as { termLoan?: ToolLoan } | null)?.termLoan ?? null
+  );
   const [restoreId, setRestoreId] = useState<string | null>(null);
 
   const { tools, loading, reload } = useFerramentas();
@@ -59,6 +58,15 @@ export function ToolsPage() {
   const { loans: activeLoans, reload: reloadActiveLoans } = useEmprestimos({ estado: 'ativo' });
 
   const reloadAll = () => { reload(); reloadLoans(); reloadActiveLoans(); };
+
+  // Limpa o state da navegação para o termo não reabrir num "voltar" do browser
+  useEffect(() => {
+    if (location.state) {
+      reloadAll();
+      window.history.replaceState({}, '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loanByTool = new Map(activeLoans.map(l => [l.toolId, l]));
 
@@ -114,7 +122,7 @@ export function ToolsPage() {
         </div>
         {isAdmin && tab === 'catalogo' && (
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => navigate('/ferramentas/nova')}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-95 transition-all text-sm font-semibold shadow-sm shrink-0"
           >
             <Plus className="w-4 h-4" />
@@ -124,7 +132,7 @@ export function ToolsPage() {
         )}
         {canOperate && tab === 'catalogo' && !isAdmin && (
           <button
-            onClick={() => setLoanTool('pick')}
+            onClick={() => navigate('/ferramentas/emprestimo')}
             className="flex items-center gap-2 px-4 py-2.5 bg-warning text-white rounded-xl hover:bg-warning/90 active:scale-95 transition-all text-sm font-semibold shadow-sm shrink-0"
           >
             <Plus className="w-4 h-4" />
@@ -237,10 +245,10 @@ export function ToolsPage() {
                         <div className="flex flex-col items-end gap-2 shrink-0">
                           <ToolStatusBadge status={t.status} />
                           {canOperate && t.status === 'disponivel' && (
-                            <button onClick={() => setLoanTool(t)} className="text-xs font-semibold text-warning hover:underline">Emprestar</button>
+                            <button onClick={() => navigate(`/ferramentas/emprestimo?ferramenta=${t.id}`)} className="text-xs font-semibold text-warning hover:underline">Emprestar</button>
                           )}
                           {canOperate && t.status === 'emprestada' && loan && (
-                            <button onClick={() => setReturnLoan(loan)} className="text-xs font-semibold text-success hover:underline">Devolver</button>
+                            <button onClick={() => navigate(`/ferramentas/${t.id}/devolucao`)} className="text-xs font-semibold text-success hover:underline">Devolver</button>
                           )}
                         </div>
                       </div>
@@ -268,10 +276,10 @@ export function ToolsPage() {
                             <td className="px-5 py-4 whitespace-nowrap text-sm text-muted-foreground">{loan?.employeeName ?? '—'}</td>
                             <td className="px-5 py-4 whitespace-nowrap text-right">
                               {canOperate && t.status === 'disponivel' && (
-                                <button onClick={() => setLoanTool(t)} className="text-xs font-semibold text-warning hover:underline">Emprestar</button>
+                                <button onClick={() => navigate(`/ferramentas/emprestimo?ferramenta=${t.id}`)} className="text-xs font-semibold text-warning hover:underline">Emprestar</button>
                               )}
                               {canOperate && t.status === 'emprestada' && loan && (
-                                <button onClick={() => setReturnLoan(loan)} className="text-xs font-semibold text-success hover:underline">Devolver</button>
+                                <button onClick={() => navigate(`/ferramentas/${t.id}/devolucao`)} className="text-xs font-semibold text-success hover:underline">Devolver</button>
                               )}
                               {!(canOperate && (t.status === 'disponivel' || t.status === 'emprestada')) && (
                                 <ChevronRight className="w-4 h-4 text-muted-foreground inline-block" />
@@ -374,7 +382,7 @@ export function ToolsPage() {
                           <td className="px-5 py-3 whitespace-nowrap text-right">
                             <div className="flex items-center justify-end gap-3">
                               {canOperate && l.status === 'ativo' && (
-                                <button onClick={() => setReturnLoan(l)} className="flex items-center gap-1 text-xs font-semibold text-success hover:underline">
+                                <button onClick={() => navigate(`/ferramentas/${l.toolId}/devolucao`)} className="flex items-center gap-1 text-xs font-semibold text-success hover:underline">
                                   <Undo2 className="w-3.5 h-3.5" /> Devolver
                                 </button>
                               )}
@@ -421,24 +429,6 @@ export function ToolsPage() {
       </div>
 
       {/* Modais */}
-      {showAddModal && (
-        <ToolFormModal onClose={() => setShowAddModal(false)} onSuccess={() => { setShowAddModal(false); reload(); }} />
-      )}
-      {loanTool && (
-        <LoanToolModal
-          tools={tools}
-          tool={loanTool === 'pick' ? undefined : loanTool}
-          onClose={() => setLoanTool(null)}
-          onSuccess={loan => { setLoanTool(null); reloadAll(); setTermLoan(loan); }}
-        />
-      )}
-      {returnLoan && (
-        <ReturnToolModal
-          loan={returnLoan}
-          onClose={() => setReturnLoan(null)}
-          onSuccess={loan => { setReturnLoan(null); reloadAll(); setTermLoan(loan); }}
-        />
-      )}
       {termLoan && (
         <ToolLoanTermPrint
           loan={termLoan}
