@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Eraser } from 'lucide-react';
+import { Eraser, Pen } from 'lucide-react';
 
 interface Props {
   label: string;
@@ -14,6 +14,11 @@ export function SignaturePad({ label, value, onChange, disabled }: Props) {
   const drawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const [hasStrokes, setHasStrokes] = useState(false);
+  // Só "arma" o desenho depois de um toque dedicado — enquanto inativo, o
+  // canvas deixa o dedo do utilizador fazer scroll normalmente. Sem isto,
+  // qualquer swipe que passe por cima da área de assinatura era interpretado
+  // como um traço (o utilizador "assinava sem querer" ao tentar descer a página).
+  const [active, setActive] = useState(false);
 
   // Redimensiona o canvas para o tamanho real do contentor, ajustado ao
   // devicePixelRatio — sem isto, assinaturas em ecrãs retina/telemóvel
@@ -72,6 +77,7 @@ export function SignaturePad({ label, value, onChange, disabled }: Props) {
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (disabled) return;
+    if (!active) { setActive(true); return; }
     (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
     drawingRef.current = true;
     lastPointRef.current = getPoint(e);
@@ -131,7 +137,7 @@ export function SignaturePad({ label, value, onChange, disabled }: Props) {
       <div
         ref={containerRef}
         className={`relative rounded-xl border-2 border-dashed overflow-hidden bg-white ${
-          isEmpty ? 'border-input' : 'border-success/40'
+          !isEmpty ? 'border-success/40' : active ? 'border-primary/50' : 'border-input'
         }`}
       >
         <canvas
@@ -141,11 +147,17 @@ export function SignaturePad({ label, value, onChange, disabled }: Props) {
           onPointerUp={finishStroke}
           onPointerCancel={finishStroke}
           onPointerLeave={finishStroke}
-          style={{ touchAction: 'none', display: 'block', cursor: disabled ? 'default' : 'crosshair' }}
+          style={{ touchAction: active ? 'none' : 'auto', display: 'block', cursor: disabled ? 'default' : 'crosshair' }}
         />
-        {isEmpty && (
+        {isEmpty && !active && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
+            <Pen className="w-4 h-4 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Toque aqui para assinar</p>
+          </div>
+        )}
+        {isEmpty && active && (
           <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground pointer-events-none">
-            Assine aqui com o dedo ou rato
+            Assine com o dedo ou rato
           </p>
         )}
       </div>

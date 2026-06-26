@@ -71,7 +71,11 @@ export default defineConfig({
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/auth\//],
+        // /sw-reset.html é a válvula de escape manual para limpar um SW
+        // preso — se ficasse sujeita ao fallback de SPA, nunca chegaria a
+        // correr, porque o fallback serve sempre o index.html cacheado
+        // antes de tentar a rede.
+        navigateFallbackDenylist: [/^\/auth\//, /^\/sw-reset\.html$/],
         runtimeCaching: [
           {
             // JS/CSS: StaleWhileRevalidate so new chunks are fetched in background.
