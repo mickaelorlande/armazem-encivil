@@ -1,4 +1,5 @@
 import { AlertTriangle, Trash2 } from 'lucide-react';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 interface ConfirmDialogProps {
   title:          string;
@@ -19,6 +20,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  useLockBodyScroll(true);
   const isDanger = variant === 'danger';
 
   return (

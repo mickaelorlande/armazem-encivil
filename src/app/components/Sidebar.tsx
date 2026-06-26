@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { useRole } from '@/features/auth/useRole';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
 const allMenuItems = [
   { path: '/',               label: 'Dashboard',     icon: LayoutDashboard, adminOnly: false },
@@ -29,6 +30,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
+  useLockBodyScroll(mobileOpen);
   const location = useLocation();
   const { isAdmin } = useRole();
   const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin);

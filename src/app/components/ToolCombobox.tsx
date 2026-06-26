@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Search, ChevronDown, Check } from 'lucide-react';
 import { getToolCategoryLabel } from '../data/mockData';
 import type { Tool } from '../types';
@@ -15,7 +15,9 @@ interface Props {
 export function ToolCombobox({ tools, value, onChange, loading, disabled, placeholder }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selected = tools.find(t => t.id === value);
@@ -32,6 +34,38 @@ export function ToolCombobox({ tools, value, onChange, loading, disabled, placeh
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  // Posiciona o painel com `fixed`, ancorado ao botão via getBoundingClientRect.
+  // Necessário porque o combobox vive dentro do contentor `overflow-y-auto` do
+  // modal — com `absolute` o painel seria cortado em vez de flutuar por cima.
+  useLayoutEffect(() => {
+    if (!open) { setPanelStyle(null); return; }
+
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const openUpward = spaceBelow < 240 && spaceAbove > spaceBelow;
+      const maxHeight = Math.min(320, Math.max(120, (openUpward ? spaceAbove : spaceBelow) - 12));
+
+      setPanelStyle({
+        left: rect.left,
+        width: rect.width,
+        top: openUpward ? rect.top - maxHeight - 6 : rect.bottom + 6,
+        maxHeight,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open]);
+
   const disponiveis = tools.filter(t => t.status === 'disponivel' || t.id === value);
   const filtered = query.trim() === ''
     ? disponiveis
@@ -45,6 +79,7 @@ export function ToolCombobox({ tools, value, onChange, loading, disabled, placeh
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled || loading}
         onClick={() => { setOpen(o => !o); setQuery(''); setTimeout(() => inputRef.current?.focus(), 0); }}
@@ -56,9 +91,12 @@ export function ToolCombobox({ tools, value, onChange, loading, disabled, placeh
         <ChevronDown className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
-        <div className="absolute z-30 mt-1.5 w-full bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-border">
+      {open && panelStyle && (
+        <div
+          className="fixed z-[60] bg-card border border-border rounded-xl shadow-lg overflow-hidden flex flex-col"
+          style={{ top: panelStyle.top, left: panelStyle.left, width: panelStyle.width, maxHeight: panelStyle.maxHeight }}
+        >
+          <div className="p-2 border-b border-border shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
@@ -71,7 +109,7 @@ export function ToolCombobox({ tools, value, onChange, loading, disabled, placeh
               />
             </div>
           </div>
-          <div className="max-h-56 overflow-y-auto">
+          <div className="overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="px-4 py-3 text-sm text-muted-foreground">Nenhuma ferramenta disponível encontrada.</p>
             ) : (

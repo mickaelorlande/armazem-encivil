@@ -10,6 +10,7 @@ import {
   useRegistarDevolucao,
 } from '@/features/ferramentas/hooks/useEmprestimos';
 import { useRole } from '@/features/auth/useRole';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import { ToolCombobox } from './ToolCombobox';
 import { SignaturePad } from './SignaturePad';
 import type { Tool, ToolCategory, ToolLoan, ReturnCondition } from '../types';
@@ -32,6 +33,7 @@ export function ToolFormModal({ tool, onClose, onSuccess }: {
   onSuccess: (tool: Tool) => void;
 }) {
   const isEdit = !!tool;
+  useLockBodyScroll(true);
   const { criar, loading: creating } = useCriarFerramenta();
   const { atualizar, loading: updating } = useAtualizarFerramenta();
   const loading = creating || updating;
@@ -78,7 +80,7 @@ export function ToolFormModal({ tool, onClose, onSuccess }: {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 enc-fade-in">
-      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto enc-scale-in">
+      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto enc-scale-in" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="p-5 border-b border-border sticky top-0 bg-card rounded-t-2xl z-10">
           <h2 className="text-lg font-bold">{isEdit ? 'Editar Ferramenta' : 'Nova Ferramenta'}</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -86,7 +88,7 @@ export function ToolFormModal({ tool, onClose, onSuccess }: {
           </p>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Código <span className="text-muted-foreground font-normal text-xs">(gerado automaticamente)</span></label>
               <input
@@ -102,7 +104,7 @@ export function ToolFormModal({ tool, onClose, onSuccess }: {
               <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={inputCls} placeholder="Ex: Berbequim Bosch GSB 13 RE" required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Categoria</label>
               <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value as ToolCategory })} className={inputCls}>
@@ -144,6 +146,7 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
   onClose: () => void;
   onSuccess: (loan: ToolLoan) => void;
 }) {
+  useLockBodyScroll(true);
   const { nome } = useRole();
   const { registar, loading } = useRegistarEmprestimo();
   const [formData, setFormData] = useState({
@@ -190,7 +193,7 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 enc-fade-in">
-      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto enc-scale-in">
+      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto enc-scale-in" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="p-5 border-b border-border sticky top-0 bg-card rounded-t-2xl z-10">
           <h2 className="text-lg font-bold">Registar Empréstimo</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Entregar ferramenta a um funcionário</p>
@@ -200,7 +203,7 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
             <label className="block text-sm font-medium mb-2">Ferramenta</label>
             <ToolCombobox tools={tools} value={formData.toolId} onChange={id => setFormData({ ...formData, toolId: id })} disabled={!!tool} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Nome do Funcionário</label>
               <input type="text" value={formData.employeeName} onChange={e => setFormData({ ...formData, employeeName: e.target.value })} className={inputCls} placeholder="Nome completo" required />
@@ -210,7 +213,7 @@ export function LoanToolModal({ tools, tool, onClose, onSuccess }: {
               <input type="text" value={formData.employeeDocument} onChange={e => setFormData({ ...formData, employeeDocument: e.target.value })} className={inputCls} placeholder="Documento de identificação" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Destino / Obra <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
               <input type="text" value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} className={inputCls} placeholder="Onde vai ser usada" />
@@ -265,6 +268,7 @@ export function ReturnToolModal({ loan, onClose, onSuccess }: {
   onClose: () => void;
   onSuccess: (loan: ToolLoan) => void;
 }) {
+  useLockBodyScroll(true);
   const { nome } = useRole();
   const { devolver, loading } = useRegistarDevolucao();
   const [formData, setFormData] = useState({
@@ -301,7 +305,7 @@ export function ReturnToolModal({ loan, onClose, onSuccess }: {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 enc-fade-in">
-      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-lg max-h-[92vh] overflow-y-auto enc-scale-in">
+      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-lg max-h-[92vh] overflow-y-auto enc-scale-in" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="p-5 border-b border-border sticky top-0 bg-card rounded-t-2xl z-10">
           <h2 className="text-lg font-bold">Registar Devolução</h2>
           <p className="text-sm text-muted-foreground mt-0.5">

@@ -14,6 +14,7 @@ import {
   useRestaurarProduto,
 } from '@/features/produtos/hooks/useProdutos';
 import { useRole } from '@/features/auth/useRole';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import type { ProductCategory, Unit, StockStatus } from '../types';
 
 type StatusFilter = 'todos' | StockStatus;
@@ -324,6 +325,7 @@ export function ProductsPage() {
 /* ── Modal novo produto ──────────────────────────────────────────── */
 
 function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  useLockBodyScroll(true);
   const { criar, loading } = useCriarProduto();
   const [formData, setFormData] = useState({
     name: '', category: 'outro' as ProductCategory, unit: 'unidade' as Unit,
@@ -363,13 +365,13 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 enc-fade-in">
-      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto enc-scale-in">
+      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto enc-scale-in" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="p-5 border-b border-border sticky top-0 bg-card rounded-t-2xl z-10">
           <h2 className="text-lg font-bold">Novo Produto</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Adicionar novo produto ao armazém</p>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Código <span className="text-muted-foreground font-normal text-xs">(gerado automaticamente)</span></label>
               <input
@@ -385,7 +387,7 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={inputCls} placeholder="Ex: Cimento Portland 25kg" required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Categoria</label>
               <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value as ProductCategory })} className={inputCls}>
@@ -399,7 +401,7 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Stock Inicial</label>
               <input type="number" value={formData.initialStock} onChange={e => setFormData({ ...formData, initialStock: e.target.value })} className={inputCls} placeholder="0" min="0" step="0.01" required />

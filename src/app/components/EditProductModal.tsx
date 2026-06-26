@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAtualizarProduto } from '@/features/produtos/hooks/useProdutos';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import type { Product, ProductCategory, Unit } from '../types';
 
 interface Props {
@@ -35,6 +36,7 @@ const UNITS: [Unit, string][] = [
 ];
 
 export function EditProductModal({ product, hasMovements, onClose, onSuccess }: Props) {
+  useLockBodyScroll(true);
   const { atualizar, loading } = useAtualizarProduto();
 
   const [form, setForm] = useState({
@@ -68,7 +70,7 @@ export function EditProductModal({ product, hasMovements, onClose, onSuccess }: 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 enc-fade-in">
-      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto enc-scale-in">
+      <div className="bg-card rounded-t-2xl sm:rounded-2xl border border-border w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto enc-scale-in" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
 
         <div className="p-5 border-b border-border sticky top-0 bg-card z-10 rounded-t-2xl">
           <h2 className="text-lg font-bold">Editar Produto</h2>
@@ -86,7 +88,7 @@ export function EditProductModal({ product, hasMovements, onClose, onSuccess }: 
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">
                 Código <span className="text-muted-foreground font-normal text-xs">(gerado automaticamente, fixo)</span>
@@ -111,7 +113,7 @@ export function EditProductModal({ product, hasMovements, onClose, onSuccess }: 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">Categoria</label>
               <select
