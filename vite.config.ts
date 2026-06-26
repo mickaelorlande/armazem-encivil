@@ -23,6 +23,11 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registamos o SW manualmente em main.tsx (virtual:pwa-register) para
+      // poder forçar verificações periódicas — sem isto o browser só
+      // verifica por uma versão nova a cada ~24h e o telemóvel fica "preso"
+      // no bundle antigo durante muito tempo depois de cada deploy.
+      injectRegister: false,
       includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
         name: 'Controle Armazém ENCIVIL',
