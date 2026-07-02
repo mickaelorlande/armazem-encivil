@@ -1,5 +1,5 @@
 export type TipoMovimento = 'entrada' | 'saida' | 'ajuste'
-export type RoleUtilizador = 'admin' | 'gestor'
+export type RoleUtilizador = 'admin' | 'gestor' | 'armazem' | 'medicoes' | 'leitura'
 
 export interface Database {
   public: {

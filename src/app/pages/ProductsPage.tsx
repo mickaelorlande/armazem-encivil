@@ -37,7 +37,7 @@ export function ProductsPage() {
 
   const { products,  loading,         reload  } = useProdutos();
   const { products: archived, loading: loadingArchived, reload: reloadArchived } = useProdutosArquivados();
-  const { isAdmin } = useRole();
+  const { podeArmazem } = useRole();
   const { restaurar, loading: restoring } = useRestaurarProduto();
 
   const filteredActive = products.filter(p => {
@@ -82,7 +82,7 @@ export function ProductsPage() {
               : (loadingArchived ? 'A carregar…' : `${archived.length} produto${archived.length !== 1 ? 's' : ''} arquivado${archived.length !== 1 ? 's' : ''}`)}
           </p>
         </div>
-        {isAdmin && tab === 'ativos' && (
+        {podeArmazem && tab === 'ativos' && (
           <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-95 transition-all text-sm font-semibold shadow-sm shrink-0"
@@ -97,7 +97,7 @@ export function ProductsPage() {
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
 
         {/* Tabs — Ativos / Arquivados (admin only) */}
-        {isAdmin && (
+        {podeArmazem && (
           <div className="flex border-b border-border px-4 pt-3">
             <button
               onClick={() => setTab('ativos')}
@@ -299,7 +299,7 @@ export function ProductsPage() {
       </div>
 
       {/* Modal: novo produto */}
-      {showAddModal && isAdmin && (
+      {showAddModal && podeArmazem && (
         <AddProductModal
           onClose={() => setShowAddModal(false)}
           onSuccess={() => { setShowAddModal(false); reload(); }}

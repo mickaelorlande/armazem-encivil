@@ -2,10 +2,12 @@ import { useNavigate } from 'react-router';
 import { Building2, Plus, Pencil, MapPin, User } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { useObras } from '@/features/obras/hooks/useObras';
+import { useRole } from '@/features/auth/useRole';
 
 export function ObrasPage() {
   const navigate = useNavigate();
   const { obras, loading } = useObras(true);
+  const { podeObras } = useRole();
 
   return (
     <div className="space-y-4">
@@ -16,12 +18,14 @@ export function ObrasPage() {
             {loading ? 'A carregar…' : `${obras.length} obra${obras.length !== 1 ? 's' : ''} ativa${obras.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button
-          onClick={() => navigate('/obras/nova')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 active:scale-[0.98] transition-all shrink-0"
-        >
-          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nova Obra</span>
-        </button>
+        {podeObras && (
+          <button
+            onClick={() => navigate('/obras/nova')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 active:scale-[0.98] transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nova Obra</span>
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -44,9 +48,11 @@ export function ObrasPage() {
                     </span>
                   </div>
                 </div>
-                <button onClick={() => navigate(`/obras/${o.id}/editar`)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors shrink-0">
-                  <Pencil className="w-4 h-4" />
-                </button>
+                {podeObras && (
+                  <button onClick={() => navigate(`/obras/${o.id}/editar`)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors shrink-0">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                )}
               </div>
               {o.client && (
                 <p className="text-sm text-muted-foreground flex items-center gap-1.5"><User className="w-3.5 h-3.5 shrink-0" /> {o.client}</p>

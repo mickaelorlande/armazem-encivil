@@ -34,8 +34,8 @@ const statusFilters: { value: StatusFilter; label: string; cls: string }[] = [
 export function ToolsPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAdmin, isGestor } = useRole();
-  const canOperate = isAdmin || isGestor;
+  const { podeFerramentas } = useRole();
+  const canOperate = podeFerramentas;
 
   const [tab, setTab] = useState<Tab>('catalogo');
   const [searchTerm, setSearchTerm] = useState('');
@@ -120,7 +120,7 @@ export function ToolsPage() {
               : (loadingArchived ? 'A carregar…' : `${archived.length} arquivada${archived.length !== 1 ? 's' : ''}`)}
           </p>
         </div>
-        {isAdmin && tab === 'catalogo' && (
+        {podeFerramentas && tab === 'catalogo' && (
           <button
             onClick={() => navigate('/ferramentas/nova')}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-95 transition-all text-sm font-semibold shadow-sm shrink-0"
@@ -130,7 +130,7 @@ export function ToolsPage() {
             <span className="sm:hidden">Nova</span>
           </button>
         )}
-        {canOperate && tab === 'catalogo' && !isAdmin && (
+        {canOperate && tab === 'catalogo' && (
           <button
             onClick={() => navigate('/ferramentas/emprestimo')}
             className="flex items-center gap-2 px-4 py-2.5 bg-warning text-white rounded-xl hover:bg-warning/90 active:scale-95 transition-all text-sm font-semibold shadow-sm shrink-0"
@@ -165,7 +165,7 @@ export function ToolsPage() {
             <History className="w-4 h-4" />
             Histórico de Empréstimos
           </button>
-          {isAdmin && (
+          {podeFerramentas && (
             <button
               onClick={() => setTab('arquivadas')}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 -mb-px whitespace-nowrap ${

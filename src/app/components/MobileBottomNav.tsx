@@ -12,10 +12,10 @@ const navItems = [
 
 export function MobileBottomNav() {
   const location = useLocation();
-  const { isAdmin, isGestor } = useRole();
+  const { podeArmazem } = useRole();
 
-  // Both admin and gestor can register movements
-  const canRegisterMovement = isAdmin || isGestor;
+  // Quem tem escrita no armazém pode registar movimentos (admin, gestor, armazém)
+  const canRegisterMovement = podeArmazem;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"

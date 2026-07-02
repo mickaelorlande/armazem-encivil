@@ -21,7 +21,7 @@ type Modal = 'edit' | 'archive' | 'delete' | null;
 export function ProductDetailPage() {
   const { id }      = useParams();
   const navigate    = useNavigate();
-  const { isAdmin } = useRole();
+  const { podeArmazem: isAdmin } = useRole();
 
   const { product, loading: loadingProduct, reload } = useProduto(id);
   const movFiltros = useMemo(() => ({ produtoId: id, limit: 20 }), [id]);

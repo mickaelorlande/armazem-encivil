@@ -36,7 +36,7 @@ function SkeletonCard() {
 
 export function DashboardPage() {
   const { stats, loading } = useDashboard();
-  const { isAdmin, isGestor } = useRole();
+  const { podeArmazem } = useRole();
 
   return (
     <div className="space-y-5">
@@ -46,7 +46,7 @@ export function DashboardPage() {
         <p className="text-sm text-muted-foreground mt-0.5">Visão geral do armazém ENCIVIL</p>
       </div>
 
-      {(isAdmin || isGestor) && (
+      {podeArmazem && (
         <div className="grid grid-cols-2 gap-3 enc-fade-up">
           <Link
             to="/novo-movimento?tipo=saida"

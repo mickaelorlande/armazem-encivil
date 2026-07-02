@@ -5,10 +5,12 @@ import { EmptyState } from '../components/EmptyState';
 import { fmtEuro } from '../lib/format';
 import { useSubempreiteiros } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
 import { useObras } from '@/features/obras/hooks/useObras';
+import { useRole } from '@/features/auth/useRole';
 
 export function SubempreiteirosPage() {
   const navigate = useNavigate();
   const { obras } = useObras(true);
+  const { podeSubempreitadas } = useRole();
   const [obraFilter, setObraFilter] = useState<string>('');
   const { subs, loading } = useSubempreiteiros(obraFilter || undefined);
 
@@ -25,12 +27,14 @@ export function SubempreiteirosPage() {
             {loading ? 'A carregar…' : `${subs.length} contrataç${subs.length !== 1 ? 'ões' : 'ão'} · ${fmtEuro(totalAcordado)} acordado`}
           </p>
         </div>
-        <button
-          onClick={() => navigate('/subempreiteiros/novo')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 active:scale-[0.98] transition-all shrink-0"
-        >
-          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nova Contratação</span>
-        </button>
+        {podeSubempreitadas && (
+          <button
+            onClick={() => navigate('/subempreiteiros/novo')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 active:scale-[0.98] transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Nova Contratação</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-card rounded-2xl border border-border p-4">

@@ -20,8 +20,8 @@ export function ToolDetailPage() {
   const { id }      = useParams();
   const navigate    = useNavigate();
   const location    = useLocation();
-  const { isAdmin, isGestor } = useRole();
-  const canOperate  = isAdmin || isGestor;
+  const { podeFerramentas } = useRole();
+  const canOperate  = podeFerramentas;
 
   const { tool, loading: loadingTool, reload } = useFerramenta(id);
   const loanFiltros = useMemo(() => ({ ferramentaId: id, limit: 30 }), [id]);
@@ -106,7 +106,7 @@ export function ToolDetailPage() {
           <p className="text-sm text-muted-foreground mt-0.5">{tool.code} · {getToolCategoryLabel(tool.category)}</p>
         </div>
 
-        {isAdmin && (
+        {podeFerramentas && (
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={() => navigate(`/ferramentas/${tool.id}/editar`)} className="flex items-center gap-1.5 px-3.5 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors text-sm font-semibold">
               <Pencil className="w-4 h-4" />

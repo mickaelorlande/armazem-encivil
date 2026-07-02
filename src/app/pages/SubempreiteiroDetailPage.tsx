@@ -17,7 +17,7 @@ import { useAutos } from '@/features/autos/hooks/useAutos';
 export function SubempreiteiroDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { isAdmin } = useRole();
+  const { isAdmin, podeSubempreitadas } = useRole();
   const { sub, loading, reload } = useSubempreiteiro(id);
   const { autos, loading: autosLoading } = useAutos(id);
   const { validar, loading: validating } = useValidarSubempreiteiro();
@@ -104,7 +104,7 @@ export function SubempreiteiroDetailPage() {
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
           <h2 className="font-semibold text-sm flex items-center gap-2"><ClipboardList className="w-4 h-4" /> Autos de Medição</h2>
-          {isValidado && (
+          {isValidado && podeSubempreitadas && (
             <button
               onClick={() => navigate(`/subempreiteiros/${sub.id}/autos/novo`)}
               className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
@@ -223,20 +223,22 @@ export function SubempreiteiroDetailPage() {
               </button>
             )
           )}
-          <div className="flex gap-3">
-            <button onClick={() => navigate(`/subempreiteiros/${sub.id}/editar`)} className="flex-1 py-3 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all flex items-center justify-center gap-2">
-              <Pencil className="w-4 h-4" /> Editar
-            </button>
-            {confirmDelete ? (
-              <button onClick={handleDelete} disabled={deleting} className="flex-1 py-3 bg-destructive text-destructive-foreground rounded-xl font-medium hover:bg-destructive/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
-                <Trash2 className="w-4 h-4" /> {deleting ? 'A eliminar…' : 'Confirmar'}
+          {podeSubempreitadas && (
+            <div className="flex gap-3">
+              <button onClick={() => navigate(`/subempreiteiros/${sub.id}/editar`)} className="flex-1 py-3 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all flex items-center justify-center gap-2">
+                <Pencil className="w-4 h-4" /> Editar
               </button>
-            ) : (
-              <button onClick={() => setConfirmDelete(true)} className="px-4 py-3 text-destructive hover:bg-destructive/10 rounded-xl font-medium transition-all flex items-center justify-center gap-2">
-                <Trash2 className="w-4 h-4" /> <span className="hidden sm:inline">Eliminar</span>
-              </button>
-            )}
-          </div>
+              {confirmDelete ? (
+                <button onClick={handleDelete} disabled={deleting} className="flex-1 py-3 bg-destructive text-destructive-foreground rounded-xl font-medium hover:bg-destructive/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+                  <Trash2 className="w-4 h-4" /> {deleting ? 'A eliminar…' : 'Confirmar'}
+                </button>
+              ) : (
+                <button onClick={() => setConfirmDelete(true)} className="px-4 py-3 text-destructive hover:bg-destructive/10 rounded-xl font-medium transition-all flex items-center justify-center gap-2">
+                  <Trash2 className="w-4 h-4" /> <span className="hidden sm:inline">Eliminar</span>
+                </button>
+              )}
+            </div>
+          )}
           {!isAdmin && (
             <p className="text-xs text-muted-foreground text-center">A validação da contratação é feita por um administrador.</p>
           )}

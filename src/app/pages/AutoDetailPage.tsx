@@ -11,7 +11,7 @@ import { useAuto, useValidarAuto, useEliminarAuto } from '@/features/autos/hooks
 export function AutoDetailPage() {
   const navigate = useNavigate();
   const { autoId } = useParams();
-  const { isAdmin } = useRole();
+  const { isAdmin, podeSubempreitadas } = useRole();
   const { auto, loading, reload } = useAuto(autoId);
   const { validar, loading: validating } = useValidarAuto();
   const { eliminar, loading: deleting } = useEliminarAuto();
@@ -159,20 +159,22 @@ export function AutoDetailPage() {
               </button>
             )
           )}
-          <div className="flex gap-3">
-            <button onClick={() => navigate(`/autos/${auto.id}/editar`)} className="flex-1 py-3 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all flex items-center justify-center gap-2">
-              <Pencil className="w-4 h-4" /> Editar
-            </button>
-            {confirmDelete ? (
-              <button onClick={handleDelete} disabled={deleting} className="flex-1 py-3 bg-destructive text-destructive-foreground rounded-xl font-medium hover:bg-destructive/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
-                <Trash2 className="w-4 h-4" /> {deleting ? 'A eliminar…' : 'Confirmar'}
+          {podeSubempreitadas && (
+            <div className="flex gap-3">
+              <button onClick={() => navigate(`/autos/${auto.id}/editar`)} className="flex-1 py-3 bg-secondary/20 text-foreground rounded-xl font-medium hover:bg-secondary/30 transition-all flex items-center justify-center gap-2">
+                <Pencil className="w-4 h-4" /> Editar
               </button>
-            ) : (
-              <button onClick={() => setConfirmDelete(true)} className="px-4 py-3 text-destructive hover:bg-destructive/10 rounded-xl font-medium transition-all flex items-center justify-center gap-2">
-                <Trash2 className="w-4 h-4" /> <span className="hidden sm:inline">Eliminar</span>
-              </button>
-            )}
-          </div>
+              {confirmDelete ? (
+                <button onClick={handleDelete} disabled={deleting} className="flex-1 py-3 bg-destructive text-destructive-foreground rounded-xl font-medium hover:bg-destructive/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+                  <Trash2 className="w-4 h-4" /> {deleting ? 'A eliminar…' : 'Confirmar'}
+                </button>
+              ) : (
+                <button onClick={() => setConfirmDelete(true)} className="px-4 py-3 text-destructive hover:bg-destructive/10 rounded-xl font-medium transition-all flex items-center justify-center gap-2">
+                  <Trash2 className="w-4 h-4" /> <span className="hidden sm:inline">Eliminar</span>
+                </button>
+              )}
+            </div>
+          )}
           {!isAdmin && <p className="text-xs text-muted-foreground text-center">A validação do auto é feita por um administrador.</p>}
         </div>
       )}
