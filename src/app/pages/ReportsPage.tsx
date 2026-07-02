@@ -7,7 +7,7 @@ import {
 import {
   BarChart3, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle,
   AlertTriangle, Printer, ChevronUp, ChevronDown, Minus, X, FileText,
-  Wrench, Boxes, Building2, HardHat, CheckCircle2,
+  Wrench, Boxes, Building2, Wallet,
 } from 'lucide-react'
 import { listarMovimentos } from '@/features/movimentos/services/movimentosService'
 import { listarProdutos } from '@/features/produtos/services/produtosService'
@@ -93,7 +93,7 @@ function KpiCard({
   label, value, icon: Icon, iconBg, valueColor, trend, loading,
 }: {
   label: string
-  value: number
+  value: string | number
   icon: React.ComponentType<{ className?: string }>
   iconBg: string
   valueColor: string
