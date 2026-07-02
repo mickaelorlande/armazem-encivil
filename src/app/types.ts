@@ -152,3 +152,30 @@ export interface Subcontractor {
   /** Valor total acordado: globalValue (global) ou soma dos artigos (unitário). */
   agreedValue: number;
 }
+
+export type MeasurementStatus = 'rascunho' | 'validado';
+
+export interface MeasurementLine {
+  id: string;
+  autoId: string;
+  itemId?: string;        // artigo do contrato (unitário); vazio se for extra
+  description: string;
+  unit: string;
+  unitPrice: number;
+  quantity: number;
+  isExtra: boolean;
+}
+
+export interface Measurement {
+  id: string;
+  subcontractorId: string;
+  number: number;
+  date: Date;
+  periodPercentage?: number;   // usado no tipo global
+  periodValue: number;         // valor executado neste auto
+  notes?: string;
+  status: MeasurementStatus;
+  createdAt: Date;
+  validatedAt?: Date;
+  lines?: MeasurementLine[];
+}

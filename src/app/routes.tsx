@@ -92,6 +92,8 @@ import { ObraFormPage } from './pages/ObraFormPage';
 import { SubempreiteirosPage } from './pages/SubempreiteirosPage';
 import { SubempreiteiroFormPage } from './pages/SubempreiteiroFormPage';
 import { SubempreiteiroDetailPage } from './pages/SubempreiteiroDetailPage';
+import { AutoFormPage } from './pages/AutoFormPage';
+import { AutoDetailPage } from './pages/AutoDetailPage';
 import { NewMovementPage } from './pages/NewMovementPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -130,6 +132,9 @@ export const router = createBrowserRouter([
           { path: 'subempreiteiros/novo',     element: <SubempreiteiroFormPage /> },
           { path: 'subempreiteiros/:id',      element: <SubempreiteiroDetailPage /> },
           { path: 'subempreiteiros/:id/editar', element: <SubempreiteiroFormPage /> },
+          { path: 'subempreiteiros/:subId/autos/novo', element: <AutoFormPage /> },
+          { path: 'autos/:autoId',            element: <AutoDetailPage /> },
+          { path: 'autos/:autoId/editar',     element: <AutoFormPage /> },
           { path: 'novo-movimento', element: <NewMovementPage /> },
           { path: 'historico',     element: <HistoryPage /> },
           { path: 'relatorios',    element: <ReportsPage /> },

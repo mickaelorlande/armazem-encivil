@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useState, useMemo } from 'react';
+import { useNavigate, useParams, Link } from 'react-router';
 import {
   ChevronLeft, Pencil, Trash2, CheckCircle2, FileEdit, ShieldCheck,
-  Phone, Building2, Lock,
+  Phone, Building2, Lock, Plus, Calendar, ClipboardList,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fmtEuro, fmtNumber } from '../lib/format';
@@ -12,23 +12,27 @@ import {
   useValidarSubempreiteiro,
   useEliminarSubempreiteiro,
 } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
+import { useAutos } from '@/features/autos/hooks/useAutos';
 
 export function SubempreiteiroDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { isAdmin } = useRole();
   const { sub, loading, reload } = useSubempreiteiro(id);
+  const { autos, loading: autosLoading } = useAutos(id);
   const { validar, loading: validating } = useValidarSubempreiteiro();
   const { eliminar, loading: deleting } = useEliminarSubempreiteiro();
   const [confirmValidate, setConfirmValidate] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Executado = soma dos autos validados. Autos em rascunho contam à parte (pendente).
+  const executado = useMemo(() => autos.filter(a => a.status === 'validado').reduce((s, a) => s + a.periodValue, 0), [autos]);
+  const pendente = useMemo(() => autos.filter(a => a.status === 'rascunho').reduce((s, a) => s + a.periodValue, 0), [autos]);
+
   if (loading) return <div className="max-w-2xl mx-auto p-8 text-center text-sm text-muted-foreground">A carregar…</div>;
   if (!sub) return <div className="max-w-2xl mx-auto p-8 text-center text-sm text-muted-foreground">Contratação não encontrada.</div>;
 
   const isValidado = sub.status === 'validado';
-  // Fase 1: ainda não há autos de medição — o executado entra na Fase 2.
-  const executado = 0;
   const falta = sub.agreedValue - executado;
 
   const handleValidate = async () => {
@@ -90,9 +94,54 @@ export function SubempreiteiroDetailPage() {
           <p className="text-lg md:text-xl font-bold mt-1">{fmtEuro(falta)}</p>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground text-center -mt-1">
-        As medições (autos) que atualizam o "executado" entram na próxima fase.
-      </p>
+      {pendente > 0 && (
+        <p className="text-xs text-muted-foreground text-center -mt-1">
+          + {fmtEuro(pendente)} em autos por validar (ainda não contam para o executado).
+        </p>
+      )}
+
+      {/* Autos de Medição */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
+          <h2 className="font-semibold text-sm flex items-center gap-2"><ClipboardList className="w-4 h-4" /> Autos de Medição</h2>
+          {isValidado && (
+            <button
+              onClick={() => navigate(`/subempreiteiros/${sub.id}/autos/novo`)}
+              className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            >
+              <Plus className="w-4 h-4" /> Novo Auto
+            </button>
+          )}
+        </div>
+        {!isValidado ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">
+            Valide a contratação para começar a lançar autos de medição.
+          </p>
+        ) : autosLoading ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">A carregar…</p>
+        ) : autos.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">Ainda não há autos. Crie o primeiro com "Novo Auto".</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {autos.map(a => (
+              <Link key={a.id} to={`/autos/${a.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-sm font-semibold shrink-0">Nº {a.number}</span>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" /> {a.date.toLocaleDateString('pt-PT')}</span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {a.status === 'validado' ? (
+                    <span className="text-[11px] font-semibold text-success flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Validado</span>
+                  ) : (
+                    <span className="text-[11px] font-semibold text-warning flex items-center gap-1"><FileEdit className="w-3 h-3" /> Rascunho</span>
+                  )}
+                  <span className="text-sm font-bold">{fmtEuro(a.periodValue)}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Dados da contratação */}
       <div className="bg-card rounded-2xl border border-border divide-y divide-border">
