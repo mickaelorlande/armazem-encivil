@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { Measurement, MeasurementLine } from '@/app/types'
 
 type LinhaRow = {
@@ -133,7 +134,7 @@ export async function atualizarAuto(id: string, input: AtualizarAuto): Promise<M
   if (input.periodValue !== undefined)      update.valor_periodo = input.periodValue
   if (input.notes !== undefined)            update.observacoes = input.notes || null
 
-  const { error } = await supabase.from('autos_medicao').update(update).eq('id', id)
+  const { error } = await supabase.from('autos_medicao').update(update as TablesUpdate<'autos_medicao'>).eq('id', id)
   if (error) throw error
 
   if (input.lines !== undefined) await substituirLinhas(id, input.lines)

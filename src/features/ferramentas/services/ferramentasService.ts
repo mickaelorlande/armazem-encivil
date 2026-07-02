@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { Tool, ToolCategory, ToolStatus } from '@/app/types'
 
 type FerramentaRow = {
@@ -87,7 +88,7 @@ export async function atualizarFerramenta(id: string, input: AtualizarFerramenta
 
   const { data, error } = await supabase
     .from('ferramentas')
-    .update(update)
+    .update(update as TablesUpdate<'ferramentas'>)
     .eq('id', id)
     .select()
     .single()

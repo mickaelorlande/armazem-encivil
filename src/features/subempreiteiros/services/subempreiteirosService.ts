@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { Subcontractor, SubcontractItem, ContractType } from '@/app/types'
 
 type ArtigoRow = {
@@ -157,7 +158,7 @@ export async function atualizarSubempreiteiro(id: string, input: AtualizarSubemp
     update.valor_global = input.type === 'global' ? (input.globalValue ?? null) : null
   }
 
-  const { error } = await supabase.from('subempreiteiros').update(update).eq('id', id)
+  const { error } = await supabase.from('subempreiteiros').update(update as TablesUpdate<'subempreiteiros'>).eq('id', id)
   if (error) throw error
 
   if (input.items !== undefined) {

@@ -121,9 +121,9 @@ export async function registarMovimento(input: RegistarMovimentoInput): Promise<
     p_tipo: input.tipo,
     p_quantidade: input.quantidade,
     p_responsavel: input.responsavel,
-    p_destino_obra: input.destinoObra ?? null,
-    p_observacoes: input.observacoes ?? null,
-    p_obra_id: input.obraId ?? null,
+    p_destino_obra: input.destinoObra,
+    p_observacoes: input.observacoes,
+    p_obra_id: input.obraId,
   })
   if (error) throw error
 }

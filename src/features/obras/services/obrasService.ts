@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { Obra, ObraStatus } from '@/app/types'
 
 type ObraRow = {
@@ -83,7 +84,7 @@ export async function atualizarObra(id: string, input: AtualizarObra): Promise<O
 
   const { data, error } = await supabase
     .from('obras')
-    .update(update)
+    .update(update as TablesUpdate<'obras'>)
     .eq('id', id)
     .select()
     .single()

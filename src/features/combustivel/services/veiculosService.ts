@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client'
+import type { TablesUpdate } from '@/integrations/supabase/types'
 import type { Vehicle, VehicleType, FuelType, CounterUnit } from '@/app/types'
 
 type VeiculoRow = {
@@ -83,7 +84,7 @@ export async function atualizarVeiculo(id: string, input: AtualizarVeiculo): Pro
   if (input.notes !== undefined)          update.observacoes = input.notes || null
   if (input.active !== undefined)         update.ativo = input.active
 
-  const { data, error } = await supabase.from('comb_veiculos').update(update).eq('id', id).select().single()
+  const { data, error } = await supabase.from('comb_veiculos').update(update as TablesUpdate<'comb_veiculos'>).eq('id', id).select().single()
   if (error) throw error
   return toVehicle(data as VeiculoRow)
 }

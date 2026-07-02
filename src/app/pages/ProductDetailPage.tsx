@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router';
 import {
   ArrowLeft, ArrowDownCircle, ArrowUpCircle,
   Package as PackageIcon, Pencil, MoreVertical,
-  Archive, Trash2, RotateCcw,
+  Archive, Trash2,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';

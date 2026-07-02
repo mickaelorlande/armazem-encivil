@@ -145,15 +145,15 @@ export async function registarEmprestimo(input: RegistarEmprestimoInput): Promis
     p_ferramenta_id: input.toolId,
     p_funcionario_nome: input.employeeName,
     p_responsavel_entrega: input.deliveredBy,
-    p_funcionario_documento: input.employeeDocument ?? null,
-    p_destino_obra: input.destination ?? null,
-    p_data_prevista_devolucao: input.expectedReturnDate ?? null,
-    p_condicao_entrega: input.deliveryCondition ?? null,
-    p_observacoes: input.notes ?? null,
+    p_funcionario_documento: input.employeeDocument,
+    p_destino_obra: input.destination,
+    p_data_prevista_devolucao: input.expectedReturnDate,
+    p_condicao_entrega: input.deliveryCondition,
+    p_observacoes: input.notes,
   })
   if (error) throw error
 
-  const loanId = (data as EmprestimoRow).id
+  const loanId = (data as unknown as EmprestimoRow).id
   const { error: sigError } = await supabase
     .from('emprestimos_ferramentas')
     .update({
@@ -180,11 +180,11 @@ export async function registarDevolucao(input: RegistarDevolucaoInput): Promise<
     p_emprestimo_id: input.loanId,
     p_condicao_devolucao: input.returnCondition,
     p_responsavel_recebimento: input.receivedBy,
-    p_observacoes_devolucao: input.returnNotes ?? null,
+    p_observacoes_devolucao: input.returnNotes,
   })
   if (error) throw error
 
-  const loanId = (data as EmprestimoRow).id
+  const loanId = (data as unknown as EmprestimoRow).id
   const { error: sigError } = await supabase
     .from('emprestimos_ferramentas')
     .update({

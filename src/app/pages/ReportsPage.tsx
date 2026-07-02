@@ -168,7 +168,7 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
   }, [])
 
   const {
-    current, previous, products, periodLabel, prevLabel,
+    current, previous, products, periodLabel,
     activityData, topProducts, stockHealth, biggestExit,
   } = data
 

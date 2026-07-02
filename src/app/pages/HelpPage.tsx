@@ -8,8 +8,6 @@ import {
   ChevronDown,
   ChevronRight,
   CheckCircle2,
-  Share,
-  Plus,
   BookOpen,
   CircleHelp,
 } from 'lucide-react';
