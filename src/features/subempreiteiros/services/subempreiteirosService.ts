@@ -1,0 +1,177 @@
+import { supabase } from '@/integrations/supabase/client'
+import type { Subcontractor, SubcontractItem, ContractType } from '@/app/types'
+
+type ArtigoRow = {
+  id: string
+  subempreiteiro_id: string
+  descricao: string
+  unidade: string
+  preco_unitario: number
+  quantidade_prevista: number
+  is_extra: boolean
+}
+
+type SubRow = {
+  id: string
+  obra_id: string
+  nome: string
+  contacto_responsavel: string | null
+  tipo: ContractType
+  valor_global: number | null
+  condicoes: string | null
+  estado: 'rascunho' | 'validado'
+  created_at: string
+  updated_at: string
+  validado_em: string | null
+  obras?: { nome: string } | null
+  subempreiteiro_artigos?: ArtigoRow[]
+}
+
+function toItem(row: ArtigoRow): SubcontractItem {
+  return {
+    id: row.id,
+    subcontractorId: row.subempreiteiro_id,
+    description: row.descricao,
+    unit: row.unidade,
+    unitPrice: Number(row.preco_unitario),
+    plannedQuantity: Number(row.quantidade_prevista),
+    isExtra: row.is_extra,
+  }
+}
+
+function toSubcontractor(row: SubRow): Subcontractor {
+  const items = (row.subempreiteiro_artigos ?? []).map(toItem)
+  const agreedValue = row.tipo === 'global'
+    ? Number(row.valor_global ?? 0)
+    : items.reduce((sum, i) => sum + i.unitPrice * i.plannedQuantity, 0)
+
+  return {
+    id: row.id,
+    obraId: row.obra_id,
+    obraName: row.obras?.nome ?? undefined,
+    name: row.nome,
+    contact: row.contacto_responsavel ?? undefined,
+    type: row.tipo,
+    globalValue: row.valor_global ?? undefined,
+    conditions: row.condicoes ?? undefined,
+    status: row.estado,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+    validatedAt: row.validado_em ? new Date(row.validado_em) : undefined,
+    items: items.sort((a, b) => Number(a.isExtra) - Number(b.isExtra)),
+    agreedValue,
+  }
+}
+
+const SELECT = '*, obras(nome), subempreiteiro_artigos(*)'
+
+export async function listarSubempreiteiros(obraId?: string): Promise<Subcontractor[]> {
+  let query = supabase.from('subempreiteiros').select(SELECT).order('created_at', { ascending: false })
+  if (obraId) query = query.eq('obra_id', obraId)
+  const { data, error } = await query
+  if (error) throw error
+  return (data as SubRow[]).map(toSubcontractor)
+}
+
+export async function buscarSubempreiteiro(id: string): Promise<Subcontractor> {
+  const { data, error } = await supabase.from('subempreiteiros').select(SELECT).eq('id', id).single()
+  if (error) throw error
+  return toSubcontractor(data as SubRow)
+}
+
+export type ItemInput = {
+  description: string
+  unit: string
+  unitPrice: number
+  plannedQuantity: number
+  isExtra?: boolean
+}
+
+export type NovoSubempreiteiro = {
+  obraId: string
+  name: string
+  contact?: string
+  type: ContractType
+  globalValue?: number
+  conditions?: string
+  items?: ItemInput[]
+}
+
+export async function criarSubempreiteiro(input: NovoSubempreiteiro): Promise<Subcontractor> {
+  const { data, error } = await supabase
+    .from('subempreiteiros')
+    .insert({
+      obra_id: input.obraId,
+      nome: input.name,
+      contacto_responsavel: input.contact ?? null,
+      tipo: input.type,
+      valor_global: input.type === 'global' ? (input.globalValue ?? null) : null,
+      condicoes: input.conditions ?? null,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+
+  const id = (data as { id: string }).id
+  if (input.type === 'unitario' && input.items?.length) {
+    await substituirArtigos(id, input.items)
+  }
+  return buscarSubempreiteiro(id)
+}
+
+export type AtualizarSubempreiteiro = Partial<NovoSubempreiteiro>
+
+export async function atualizarSubempreiteiro(id: string, input: AtualizarSubempreiteiro): Promise<Subcontractor> {
+  const update: Record<string, unknown> = {}
+  if (input.obraId !== undefined)     update.obra_id = input.obraId
+  if (input.name !== undefined)       update.nome = input.name
+  if (input.contact !== undefined)    update.contacto_responsavel = input.contact || null
+  if (input.type !== undefined)       update.tipo = input.type
+  if (input.conditions !== undefined) update.condicoes = input.conditions || null
+  if (input.type !== undefined || input.globalValue !== undefined) {
+    update.valor_global = input.type === 'global' ? (input.globalValue ?? null) : null
+  }
+
+  const { error } = await supabase.from('subempreiteiros').update(update).eq('id', id)
+  if (error) throw error
+
+  if (input.items !== undefined) {
+    await substituirArtigos(id, input.type === 'unitario' ? input.items : [])
+  }
+  return buscarSubempreiteiro(id)
+}
+
+// Substitui a lista de artigos (apaga os antigos e insere os novos). Simples e
+// seguro enquanto a contratação está em rascunho — que é a única altura em que
+// a RLS permite escrever nestes registos.
+async function substituirArtigos(subId: string, items: ItemInput[]): Promise<void> {
+  const { error: delError } = await supabase
+    .from('subempreiteiro_artigos')
+    .delete()
+    .eq('subempreiteiro_id', subId)
+  if (delError) throw delError
+
+  if (!items.length) return
+  const { error: insError } = await supabase
+    .from('subempreiteiro_artigos')
+    .insert(items.map(i => ({
+      subempreiteiro_id: subId,
+      descricao: i.description,
+      unidade: i.unit,
+      preco_unitario: i.unitPrice,
+      quantidade_prevista: i.plannedQuantity,
+      is_extra: i.isExtra ?? false,
+    })))
+  if (insError) throw insError
+}
+
+export async function eliminarSubempreiteiro(id: string): Promise<void> {
+  const { error } = await supabase.from('subempreiteiros').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function validarSubempreiteiro(id: string): Promise<Subcontractor> {
+  const { error } = await supabase.rpc('validar_subempreiteiro', { p_id: id })
+  if (error) throw error
+  return buscarSubempreiteiro(id)
+}

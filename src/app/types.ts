@@ -105,3 +105,50 @@ export interface DashboardStats {
   recentMovements: Movement[];
   lowStockItems: LowStockItem[];
 }
+
+/* ─── Obras + Subempreiteiros (Fase 1) ─────────────────────────── */
+
+export type ObraStatus = 'ativa' | 'concluida';
+
+export interface Obra {
+  id: string;
+  name: string;
+  client?: string;
+  location?: string;
+  status: ObraStatus;
+  notes?: string;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type ContractType = 'global' | 'unitario';
+export type ContractStatus = 'rascunho' | 'validado';
+
+export interface SubcontractItem {
+  id: string;
+  subcontractorId: string;
+  description: string;
+  unit: string;
+  unitPrice: number;
+  plannedQuantity: number;
+  isExtra: boolean;
+}
+
+export interface Subcontractor {
+  id: string;
+  obraId: string;
+  obraName?: string;
+  name: string;
+  contact?: string;
+  type: ContractType;
+  globalValue?: number;   // usado quando type === 'global'
+  conditions?: string;
+  status: ContractStatus;
+  createdAt: Date;
+  updatedAt: Date;
+  validatedAt?: Date;
+  items?: SubcontractItem[];
+  /** Valor total acordado: globalValue (global) ou soma dos artigos (unitário). */
+  agreedValue: number;
+}

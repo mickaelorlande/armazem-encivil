@@ -87,6 +87,10 @@ import { ToolDetailPage } from './pages/ToolDetailPage';
 import { ToolFormPage } from './pages/ToolFormPage';
 import { ToolLoanPage } from './pages/ToolLoanPage';
 import { ToolReturnPage } from './pages/ToolReturnPage';
+import { ObrasPage } from './pages/ObrasPage';
+import { SubempreiteirosPage } from './pages/SubempreiteirosPage';
+import { SubempreiteiroFormPage } from './pages/SubempreiteiroFormPage';
+import { SubempreiteiroDetailPage } from './pages/SubempreiteiroDetailPage';
 import { NewMovementPage } from './pages/NewMovementPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -118,6 +122,11 @@ export const router = createBrowserRouter([
           { path: 'ferramentas/:id',          element: <ToolDetailPage /> },
           { path: 'ferramentas/:id/editar',    element: <ToolFormPage /> },
           { path: 'ferramentas/:id/devolucao', element: <ToolReturnPage /> },
+          { path: 'obras',                    element: <ObrasPage /> },
+          { path: 'subempreiteiros',          element: <SubempreiteirosPage /> },
+          { path: 'subempreiteiros/novo',     element: <SubempreiteiroFormPage /> },
+          { path: 'subempreiteiros/:id',      element: <SubempreiteiroDetailPage /> },
+          { path: 'subempreiteiros/:id/editar', element: <SubempreiteiroFormPage /> },
           { path: 'novo-movimento', element: <NewMovementPage /> },
           { path: 'historico',     element: <HistoryPage /> },
           { path: 'relatorios',    element: <ReportsPage /> },
