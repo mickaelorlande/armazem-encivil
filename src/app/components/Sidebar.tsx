@@ -8,6 +8,7 @@ import {
   Settings,
   CircleHelp,
   Wrench,
+  Fuel,
   Building2,
   HardHat,
   X,
@@ -31,6 +32,7 @@ const menuSections: MenuSection[] = [
       { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus },
       { path: '/historico',      label: 'Histórico',      icon: History },
       { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench },
+      { path: '/combustivel',    label: 'Combustível',    icon: Fuel },
     ],
   },
   {

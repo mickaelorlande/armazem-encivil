@@ -95,6 +95,9 @@ import { SubempreiteiroFormPage } from './pages/SubempreiteiroFormPage';
 import { SubempreiteiroDetailPage } from './pages/SubempreiteiroDetailPage';
 import { AutoFormPage } from './pages/AutoFormPage';
 import { AutoDetailPage } from './pages/AutoDetailPage';
+import { CombustivelPage } from './pages/CombustivelPage';
+import { AbastecimentoFormPage } from './pages/AbastecimentoFormPage';
+import { VeiculoFormPage } from './pages/VeiculoFormPage';
 import { NewMovementPage } from './pages/NewMovementPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -137,6 +140,11 @@ export const router = createBrowserRouter([
           { path: 'subempreiteiros/:subId/autos/novo', element: <AutoFormPage /> },
           { path: 'autos/:autoId',            element: <AutoDetailPage /> },
           { path: 'autos/:autoId/editar',     element: <AutoFormPage /> },
+          { path: 'combustivel',                       element: <CombustivelPage /> },
+          { path: 'combustivel/abastecimento',         element: <AbastecimentoFormPage /> },
+          { path: 'combustivel/abastecimento/:id/editar', element: <AbastecimentoFormPage /> },
+          { path: 'combustivel/veiculo',               element: <VeiculoFormPage /> },
+          { path: 'combustivel/veiculo/:id/editar',    element: <VeiculoFormPage /> },
           { path: 'novo-movimento', element: <NewMovementPage /> },
           { path: 'historico',     element: <HistoryPage /> },
           { path: 'relatorios',    element: <ReportsPage /> },

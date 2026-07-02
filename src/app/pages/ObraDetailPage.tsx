@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import {
   ChevronLeft, Pencil, Building2, User, MapPin, HardHat, Package,
-  ArrowRight, CheckCircle2, FileEdit,
+  ArrowRight, CheckCircle2, FileEdit, Fuel,
 } from 'lucide-react';
 import { fmtEuro, fmtNumber } from '../lib/format';
 import { getUnitLabel } from '../data/mockData';
@@ -10,6 +10,7 @@ import { useRole } from '@/features/auth/useRole';
 import { useObra } from '@/features/obras/hooks/useObras';
 import { useSubempreiteirosComExecutado } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
 import { useMovimentos } from '@/features/movimentos/hooks/useMovimentos';
+import { useAbastecimentos } from '@/features/combustivel/hooks/useCombustivel';
 
 export function ObraDetailPage() {
   const navigate = useNavigate();
@@ -22,12 +23,15 @@ export function ObraDetailPage() {
   const { movements, loading: movsLoading } = useMovimentos(
     obra ? { tipo: 'saida', destino: obra.name } : {}
   );
+  const { entries: fuelEntries, loading: fuelLoading } = useAbastecimentos(id ? { obraId: id } : {});
 
   const totais = useMemo(() => {
     const acordado = subs.reduce((s, x) => s + x.agreedValue, 0);
     const executado = subs.reduce((s, x) => s + x.executed, 0);
     return { acordado, executado, falta: acordado - executado };
   }, [subs]);
+
+  const custoCombustivel = useMemo(() => fuelEntries.reduce((s, e) => s + e.totalCost, 0), [fuelEntries]);
 
   if (loading) return <div className="max-w-3xl mx-auto p-8 text-center text-sm text-muted-foreground">A carregar…</div>;
   if (!obra) return <div className="max-w-3xl mx-auto p-8 text-center text-sm text-muted-foreground">Obra não encontrada.</div>;
@@ -141,6 +145,34 @@ export function ObraDetailPage() {
             ))}
             {movements.length > 10 && (
               <p className="px-5 py-2.5 text-xs text-muted-foreground text-center">+ {movements.length - 10} mais no histórico</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Combustível imputado à obra */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
+          <h2 className="font-semibold text-sm flex items-center gap-2"><Fuel className="w-4 h-4" /> Combustível</h2>
+          {custoCombustivel > 0 && <span className="text-sm font-bold">{fmtEuro(custoCombustivel)}</span>}
+        </div>
+        {fuelLoading ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">A carregar…</p>
+        ) : fuelEntries.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">Sem combustível imputado a esta obra.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {fuelEntries.slice(0, 10).map(e => (
+              <div key={e.id} className="flex items-center justify-between gap-3 px-5 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{e.vehicleName ?? '—'}</p>
+                  <p className="text-xs text-muted-foreground">{e.date.toLocaleDateString('pt-PT')} · {fmtNumber(e.liters)} L</p>
+                </div>
+                <span className="text-sm font-semibold whitespace-nowrap">{fmtEuro(e.totalCost)}</span>
+              </div>
+            ))}
+            {fuelEntries.length > 10 && (
+              <p className="px-5 py-2.5 text-xs text-muted-foreground text-center">+ {fuelEntries.length - 10} mais</p>
             )}
           </div>
         )}

@@ -153,6 +153,46 @@ export interface Subcontractor {
   agreedValue: number;
 }
 
+/* ─── Combustível ──────────────────────────────────────────────── */
+
+export type VehicleType = 'viatura' | 'maquina' | 'gerador' | 'outro';
+export type FuelType = 'gasoleo' | 'gasolina' | 'adblue' | 'eletrico' | 'outro';
+export type CounterUnit = 'km' | 'horas';
+
+export interface Vehicle {
+  id: string;
+  code: string;
+  name: string;
+  type: VehicleType;
+  identification?: string;
+  fuelType: FuelType;
+  counterUnit: CounterUnit;
+  active: boolean;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FuelEntry {
+  id: string;
+  vehicleId: string;
+  vehicleName?: string;
+  vehicleCode?: string;
+  counterUnit?: CounterUnit;
+  obraId?: string;
+  obraName?: string;
+  date: Date;
+  liters: number;
+  totalCost: number;
+  counter?: number;
+  location?: string;
+  responsible: string;
+  notes?: string;
+  createdAt: Date;
+  /** Preço por litro derivado (custo / litros). */
+  pricePerLiter: number;
+}
+
 export type MeasurementStatus = 'rascunho' | 'validado';
 
 export interface MeasurementLine {

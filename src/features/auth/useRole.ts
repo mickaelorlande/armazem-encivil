@@ -32,6 +32,7 @@ export function useRole() {
     podeEscrever,
     podeArmazem:        podeEscrever('armazem'),
     podeFerramentas:    podeEscrever('ferramentas'),
+    podeCombustivel:    podeEscrever('combustivel'),
     podeObras:          podeEscrever('obras'),
     podeSubempreitadas: podeEscrever('subempreitadas'),
     // Só admin valida (rascunho -> validado)
