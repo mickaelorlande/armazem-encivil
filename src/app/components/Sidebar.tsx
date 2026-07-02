@@ -15,17 +15,39 @@ import {
 import { useRole } from '@/features/auth/useRole';
 import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 
-const allMenuItems = [
-  { path: '/',               label: 'Dashboard',     icon: LayoutDashboard, adminOnly: false },
-  { path: '/produtos',       label: 'Produtos',       icon: Package,         adminOnly: false },
-  { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench,          adminOnly: false },
-  { path: '/obras',          label: 'Obras',          icon: Building2,       adminOnly: false },
-  { path: '/subempreiteiros',label: 'Subempreiteiros',icon: HardHat,         adminOnly: false },
-  { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus,            adminOnly: false },
-  { path: '/historico',      label: 'Histórico',      icon: History,         adminOnly: false },
-  { path: '/relatorios',     label: 'Relatórios',     icon: FileBarChart,    adminOnly: false },
-  { path: '/configuracoes',  label: 'Configurações',  icon: Settings,        adminOnly: true  },
-  { path: '/ajuda',          label: 'Ajuda',          icon: CircleHelp,      adminOnly: false },
+type MenuItem = { path: string; label: string; icon: typeof Package; adminOnly?: boolean };
+type MenuSection = { title?: string; items: MenuItem[] };
+
+const menuSections: MenuSection[] = [
+  {
+    items: [
+      { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: 'Operação',
+    items: [
+      { path: '/produtos',       label: 'Produtos',       icon: Package },
+      { path: '/novo-movimento', label: 'Novo Movimento', icon: Plus },
+      { path: '/historico',      label: 'Histórico',      icon: History },
+      { path: '/ferramentas',    label: 'Ferramentas',    icon: Wrench },
+    ],
+  },
+  {
+    title: 'Obras',
+    items: [
+      { path: '/obras',           label: 'Obras',           icon: Building2 },
+      { path: '/subempreiteiros', label: 'Subempreiteiros', icon: HardHat },
+    ],
+  },
+  {
+    title: 'Gestão',
+    items: [
+      { path: '/relatorios',    label: 'Relatórios',    icon: FileBarChart },
+      { path: '/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
+      { path: '/ajuda',         label: 'Ajuda',         icon: CircleHelp },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -37,7 +59,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   useLockBodyScroll(mobileOpen);
   const location = useLocation();
   const { isAdmin } = useRole();
-  const menuItems = allMenuItems.filter(item => !item.adminOnly || isAdmin);
+
+  const visibleSections = menuSections
+    .map(section => ({ ...section, items: section.items.filter(item => !item.adminOnly || isAdmin) }))
+    .filter(section => section.items.length > 0);
 
   const sidebarContent = (
     <aside className="w-64 bg-sidebar text-sidebar-foreground h-full flex flex-col border-r border-sidebar-border">
@@ -68,29 +93,38 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 p-4 overflow-y-auto">
-        <ul className="space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  onClick={onMobileClose}
-                  className={`
-                    flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150
-                    ${isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-0.5'}
-                  `}
-                >
-                  <Icon className="w-5 h-5 shrink-0" />
-                  <span className="text-sm">{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        {visibleSections.map((section, idx) => (
+          <div key={section.title ?? idx} className={idx > 0 ? 'mt-5' : ''}>
+            {section.title && (
+              <p className="px-4 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+                {section.title}
+              </p>
+            )}
+            <ul className="space-y-1">
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      onClick={onMobileClose}
+                      className={`
+                        flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150
+                        ${isActive
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-0.5'}
+                      `}
+                    >
+                      <Icon className="w-5 h-5 shrink-0" />
+                      <span className="text-sm">{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">
