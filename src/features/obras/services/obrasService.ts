@@ -7,6 +7,7 @@ type ObraRow = {
   cliente: string | null
   localizacao: string | null
   estado: ObraStatus
+  orcamento: number | null
   observacoes: string | null
   ativo: boolean
   created_at: string
@@ -20,6 +21,7 @@ function toObra(row: ObraRow): Obra {
     client: row.cliente ?? undefined,
     location: row.localizacao ?? undefined,
     status: row.estado,
+    budget: row.orcamento ?? undefined,
     notes: row.observacoes ?? undefined,
     active: row.ativo,
     createdAt: new Date(row.created_at),
@@ -46,6 +48,7 @@ export type NovaObra = {
   client?: string
   location?: string
   status?: ObraStatus
+  budget?: number
   notes?: string
 }
 
@@ -57,6 +60,7 @@ export async function criarObra(input: NovaObra): Promise<Obra> {
       cliente: input.client ?? null,
       localizacao: input.location ?? null,
       estado: input.status ?? 'ativa',
+      orcamento: input.budget ?? null,
       observacoes: input.notes ?? null,
     })
     .select()
@@ -73,6 +77,7 @@ export async function atualizarObra(id: string, input: AtualizarObra): Promise<O
   if (input.client !== undefined)   update.cliente = input.client || null
   if (input.location !== undefined) update.localizacao = input.location || null
   if (input.status !== undefined)   update.estado = input.status
+  if (input.budget !== undefined)   update.orcamento = input.budget ?? null
   if (input.notes !== undefined)    update.observacoes = input.notes || null
   if (input.active !== undefined)   update.ativo = input.active
 

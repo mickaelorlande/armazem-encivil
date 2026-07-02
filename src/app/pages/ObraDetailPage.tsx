@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import {
   ChevronLeft, Pencil, Building2, User, MapPin, HardHat, Package,
-  ArrowRight, CheckCircle2, FileEdit, Fuel,
+  ArrowRight, CheckCircle2, FileEdit, Fuel, Wallet, TrendingUp, TrendingDown,
 } from 'lucide-react';
 import { fmtEuro, fmtNumber } from '../lib/format';
 import { getUnitLabel } from '../data/mockData';
@@ -11,6 +11,7 @@ import { useObra } from '@/features/obras/hooks/useObras';
 import { useSubempreiteirosComExecutado } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
 import { useMovimentos } from '@/features/movimentos/hooks/useMovimentos';
 import { useAbastecimentos } from '@/features/combustivel/hooks/useCombustivel';
+import { useCustoObra } from '@/features/custos/useCustoObra';
 
 export function ObraDetailPage() {
   const navigate = useNavigate();
@@ -25,11 +26,7 @@ export function ObraDetailPage() {
   );
   const { entries: fuelEntries, loading: fuelLoading } = useAbastecimentos(id ? { obraId: id } : {});
 
-  const totais = useMemo(() => {
-    const acordado = subs.reduce((s, x) => s + x.agreedValue, 0);
-    const executado = subs.reduce((s, x) => s + x.executed, 0);
-    return { acordado, executado, falta: acordado - executado };
-  }, [subs]);
+  const { custo, loading: custoLoading } = useCustoObra(id, obra?.budget);
 
   const custoCombustivel = useMemo(() => fuelEntries.reduce((s, e) => s + e.totalCost, 0), [fuelEntries]);
 
@@ -70,24 +67,55 @@ export function ObraDetailPage() {
         </div>
       )}
 
-      {/* Custos com subempreiteiros */}
+      {/* Resultado da obra (P&L) */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-card rounded-2xl border border-border p-4 text-center">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Contratado</p>
-          <p className="text-base md:text-lg font-bold mt-1 text-primary">{fmtEuro(totais.acordado)}</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Orçamento</p>
+          <p className="text-base md:text-lg font-bold mt-1 text-foreground">{obra.budget != null ? fmtEuro(obra.budget) : '—'}</p>
         </div>
         <div className="bg-card rounded-2xl border border-border p-4 text-center">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Executado</p>
-          <p className="text-base md:text-lg font-bold mt-1 text-success">{fmtEuro(totais.executado)}</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Custo Real</p>
+          <p className="text-base md:text-lg font-bold mt-1 text-destructive">{custoLoading ? '…' : fmtEuro(custo?.total)}</p>
         </div>
-        <div className="bg-card rounded-2xl border border-border p-4 text-center">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Falta</p>
-          <p className="text-base md:text-lg font-bold mt-1">{fmtEuro(totais.falta)}</p>
+        <div className={`rounded-2xl border p-4 text-center ${
+          custo?.margem == null ? 'bg-card border-border'
+            : custo.margem >= 0 ? 'bg-success/5 border-success/30' : 'bg-destructive/5 border-destructive/30'
+        }`}>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center justify-center gap-1">
+            Margem {custo?.margem != null && (custo.margem >= 0 ? <TrendingUp className="w-3 h-3 text-success" /> : <TrendingDown className="w-3 h-3 text-destructive" />)}
+          </p>
+          <p className={`text-base md:text-lg font-bold mt-1 ${
+            custo?.margem == null ? 'text-muted-foreground' : custo.margem >= 0 ? 'text-success' : 'text-destructive'
+          }`}>
+            {custo?.margem != null ? fmtEuro(custo.margem) : '—'}
+          </p>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground text-center -mt-1">
-        Valores de subempreiteiros. Materiais e combustível entram no custo total à medida que ganham preço.
-      </p>
+
+      {/* Repartição do custo real */}
+      <div className="bg-card rounded-2xl border border-border p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Wallet className="w-4 h-4 text-primary" />
+          <h2 className="font-semibold text-sm">Repartição do Custo</h2>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Materiais</p>
+            <p className="text-sm md:text-base font-bold mt-1">{custoLoading ? '…' : fmtEuro(custo?.materiais)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Subempreiteiros</p>
+            <p className="text-sm md:text-base font-bold mt-1">{custoLoading ? '…' : fmtEuro(custo?.subempreiteiros)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Combustível</p>
+            <p className="text-sm md:text-base font-bold mt-1">{custoLoading ? '…' : fmtEuro(custo?.combustivel)}</p>
+          </div>
+        </div>
+        {obra.budget == null && (
+          <p className="text-xs text-muted-foreground text-center mt-3">Defina o orçamento da obra (em Editar) para ver a margem.</p>
+        )}
+      </div>
 
       {/* Subempreiteiros da obra */}
       <div className="bg-card rounded-2xl border border-border overflow-hidden">

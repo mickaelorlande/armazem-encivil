@@ -23,6 +23,7 @@ export interface Product {
   unit: Unit;
   currentStock: number;
   minStock: number;
+  unitCost: number;
   status: StockStatus;
   notes?: string;
   createdAt: Date;
@@ -39,6 +40,7 @@ export interface Movement {
   responsible: string;
   destination?: string;
   obra?: string;
+  obraId?: string;
   notes?: string;
   date: Date;
   previousStock: number;
@@ -116,6 +118,7 @@ export interface Obra {
   client?: string;
   location?: string;
   status: ObraStatus;
+  budget?: number;
   notes?: string;
   active: boolean;
   createdAt: Date;

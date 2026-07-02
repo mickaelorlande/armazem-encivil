@@ -22,6 +22,7 @@ export function ObraFormPage() {
     client: '',
     location: '',
     status: 'ativa' as ObraStatus,
+    budget: '',
     notes: '',
   });
 
@@ -32,6 +33,7 @@ export function ObraFormPage() {
       client: obra.client ?? '',
       location: obra.location ?? '',
       status: obra.status,
+      budget: obra.budget != null ? String(obra.budget) : '',
       notes: obra.notes ?? '',
     });
   }, [isEdit, obra]);
@@ -46,6 +48,7 @@ export function ObraFormPage() {
       client: form.client,
       location: form.location,
       status: form.status,
+      budget: form.budget ? parseFloat(form.budget) : undefined,
       notes: form.notes,
     };
     const result = isEdit ? await atualizar(id!, payload) : await criar(payload);
@@ -99,9 +102,15 @@ export function ObraFormPage() {
               </select>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Localização <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
-            <input type="text" value={form.location} onChange={e => set({ location: e.target.value })} className={inputCls} placeholder="Morada / zona" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Localização <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>
+              <input type="text" value={form.location} onChange={e => set({ location: e.target.value })} className={inputCls} placeholder="Morada / zona" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Orçamento (€) <span className="text-muted-foreground font-normal text-xs">(valor com o cliente)</span></label>
+              <input type="number" inputMode="decimal" min="0" step="0.01" value={form.budget} onChange={e => set({ budget: e.target.value })} className={inputCls} placeholder="0.00" />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal text-xs">(opcional)</span></label>

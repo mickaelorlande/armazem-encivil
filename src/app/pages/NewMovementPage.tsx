@@ -10,6 +10,7 @@ import { ProductCombobox } from '../components/ProductCombobox';
 import type { MovementType } from '../types';
 import { useProdutos } from '@/features/produtos/hooks/useProdutos';
 import { useRegistarMovimento } from '@/features/movimentos/hooks/useMovimentos';
+import { useObras } from '@/features/obras/hooks/useObras';
 import { useRole } from '@/features/auth/useRole';
 
 type Linha = { id: string; productId: string; quantity: string };
@@ -37,14 +38,19 @@ export function NewMovementPage() {
     ? rawTipo as MovementType
     : 'saida';
 
+  const { obras } = useObras(true);
   const [showAjuste, setShowAjuste] = useState(paramTipo === 'ajuste');
   const [formData, setFormData] = useState({
     type:        paramTipo,
     quantity:    '',
     responsible: nome,
     destination: '',
+    obraId:      '',
     notes:       '',
   });
+  // Saída: por defeito escolhe-se uma obra do cadastro (liga o custo à obra).
+  // "Outro destino" permite texto livre para destinos sem obra formal.
+  const [outroDestino, setOutroDestino] = useState(false);
   const [linhas, setLinhas] = useState<Linha[]>([novaLinha(paramProd)]);
 
   // Sync responsible field once the profile is loaded (nome may arrive after first render)
@@ -103,7 +109,18 @@ export function NewMovementPage() {
     /* ── Submissão: entrada/saída — um ou vários produtos ── */
     const validas = linhas.filter(l => l.productId && parseFloat(l.quantity || '0') > 0);
     if (validas.length === 0) { toast.error('Adicione pelo menos um produto com quantidade.'); return; }
-    if (formData.type === 'saida' && !formData.destination.trim()) { toast.error('Indique o destino / obra.'); return; }
+
+    // Resolve destino/obra: na saída, ou é uma obra do cadastro (liga o custo)
+    // ou texto livre ("outro destino"). Na entrada, é o fornecedor (texto).
+    const obraSel = obras.find(o => o.id === formData.obraId);
+    const usaObra = formData.type === 'saida' && !outroDestino;
+    const destinoFinal = usaObra ? (obraSel?.name ?? '') : formData.destination;
+    const obraIdFinal = usaObra ? (formData.obraId || undefined) : undefined;
+
+    if (formData.type === 'saida' && !destinoFinal.trim()) {
+      toast.error(usaObra ? 'Selecione a obra de destino.' : 'Indique o destino.');
+      return;
+    }
 
     if (formData.type === 'saida') {
       for (const l of validas) {
@@ -126,7 +143,8 @@ export function NewMovementPage() {
         tipo:         formData.type as MovementType,
         quantidade:   parseFloat(l.quantity),
         responsavel:  formData.responsible,
-        destinoObra:  formData.destination || undefined,
+        destinoObra:  destinoFinal || undefined,
+        obraId:       obraIdFinal,
         observacoes:  formData.notes || undefined,
       });
       if (result.status === 'ok') okCount++;
@@ -461,21 +479,56 @@ export function NewMovementPage() {
             />
           </div>
 
-          {/* Destino/Fornecedor — oculto no ajuste */}
-          {formData.type !== 'ajuste' && (
+          {/* Fornecedor (entrada) — texto livre */}
+          {formData.type === 'entrada' && (
             <div>
-              <label className="block text-sm font-medium mb-2">
-                {formData.type === 'entrada' ? 'Fornecedor' : 'Destino / Obra'}
-                {formData.type === 'saida' && <span className="text-destructive ml-1">*</span>}
-              </label>
+              <label className="block text-sm font-medium mb-2">Fornecedor</label>
               <input
                 type="text"
                 value={formData.destination}
                 onChange={e => set({ destination: e.target.value })}
                 className={inputCls}
-                placeholder={formData.type === 'entrada' ? 'Nome do fornecedor (opcional)' : 'Destino ou nome da obra'}
-                required={formData.type === 'saida'}
+                placeholder="Nome do fornecedor (opcional)"
               />
+            </div>
+          )}
+
+          {/* Obra de destino (saída) — liga o custo do material à obra */}
+          {formData.type === 'saida' && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium">
+                  Obra de Destino <span className="text-destructive ml-1">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setOutroDestino(v => !v)}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {outroDestino ? 'Escolher obra' : 'Outro destino'}
+                </button>
+              </div>
+              {outroDestino ? (
+                <input
+                  type="text"
+                  value={formData.destination}
+                  onChange={e => set({ destination: e.target.value })}
+                  className={inputCls}
+                  placeholder="Destino sem obra formal (ex: sede, cliente)"
+                />
+              ) : (
+                <select
+                  value={formData.obraId}
+                  onChange={e => set({ obraId: e.target.value })}
+                  className={inputCls}
+                >
+                  <option value="">Selecione a obra</option>
+                  {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              )}
+              {!outroDestino && obras.length === 0 && (
+                <p className="text-xs text-warning mt-1.5">Ainda não há obras. Crie uma obra ou use "Outro destino".</p>
+              )}
             </div>
           )}
 

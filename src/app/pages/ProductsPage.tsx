@@ -329,7 +329,7 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const { criar, loading } = useCriarProduto();
   const [formData, setFormData] = useState({
     name: '', category: 'outro' as ProductCategory, unit: 'unidade' as Unit,
-    initialStock: '', minStock: '', notes: '',
+    initialStock: '', minStock: '', unitCost: '', notes: '',
   });
   const [codigoPreview, setCodigoPreview] = useState('');
   const [gerandoCodigo, setGerandoCodigo] = useState(true);
@@ -351,6 +351,7 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       unit:         formData.unit,
       currentStock: parseFloat(formData.initialStock) || 0,
       minStock:     parseFloat(formData.minStock) || 0,
+      unitCost:     parseFloat(formData.unitCost) || 0,
       notes:        formData.notes || undefined,
     });
     if (result) {
@@ -410,6 +411,10 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               <label className="block text-sm font-medium mb-2">Stock Mínimo <span className="text-muted-foreground font-normal text-xs ml-1">(para alertas)</span></label>
               <input type="number" value={formData.minStock} onChange={e => setFormData({ ...formData, minStock: e.target.value })} className={inputCls} placeholder="0" min="0" step="0.01" required />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Custo Unitário (€) <span className="text-muted-foreground font-normal text-xs ml-1">(para custo por obra)</span></label>
+            <input type="number" value={formData.unitCost} onChange={e => setFormData({ ...formData, unitCost: e.target.value })} className={inputCls} placeholder="0.00" min="0" step="0.0001" />
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Observações <span className="text-muted-foreground font-normal">(opcional)</span></label>

@@ -9,6 +9,7 @@ type ProdutoRow = {
   unidade: string
   stock_atual: number
   stock_minimo: number
+  custo_unitario: number
   ativo: boolean
   observacoes: string | null
   created_at: string
@@ -30,6 +31,7 @@ function toProduct(row: ProdutoRow): Product {
     unit: row.unidade as Unit,
     currentStock: row.stock_atual,
     minStock: row.stock_minimo,
+    unitCost: Number(row.custo_unitario ?? 0),
     status: calcStatus(row.stock_atual, row.stock_minimo),
     notes: row.observacoes ?? undefined,
     createdAt: new Date(row.created_at),
@@ -63,6 +65,7 @@ export type NovoProduto = {
   unit: Unit
   currentStock: number
   minStock: number
+  unitCost?: number
   notes?: string
 }
 
@@ -75,6 +78,7 @@ export async function criarProduto(input: NovoProduto): Promise<Product> {
       unidade: input.unit,
       stock_atual: input.currentStock,
       stock_minimo: input.minStock,
+      custo_unitario: input.unitCost ?? 0,
       observacoes: input.notes ?? null,
     })
     .select()
@@ -91,6 +95,7 @@ export async function atualizarProduto(id: string, input: AtualizarProduto): Pro
   if (input.category !== undefined) update.categoria = input.category
   if (input.unit !== undefined) update.unidade = input.unit
   if (input.minStock !== undefined) update.stock_minimo = input.minStock
+  if (input.unitCost !== undefined) update.custo_unitario = input.unitCost
   if (input.notes !== undefined) update.observacoes = input.notes
 
   const { data, error } = await supabase

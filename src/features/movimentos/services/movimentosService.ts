@@ -10,6 +10,7 @@ type MovimentoRow = {
   stock_depois: number
   responsavel: string
   destino_obra: string | null
+  obra_id: string | null
   observacoes: string | null
   created_at: string
   created_by: string
@@ -27,6 +28,7 @@ function toMovement(row: MovimentoRow): Movement {
     responsible: row.responsavel,
     destination: row.destino_obra ?? undefined,
     obra: row.destino_obra ?? undefined,
+    obraId: row.obra_id ?? undefined,
     notes: row.observacoes ?? undefined,
     date: new Date(row.created_at),
     previousStock: row.stock_antes,
@@ -40,6 +42,7 @@ export type FiltrosMovimentos = {
   dataInicio?: Date
   dataFim?: Date
   destino?: string
+  obraId?: string
   limit?: number
   offset?: number
 }
@@ -61,6 +64,7 @@ export async function listarMovimentos(filtros: FiltrosMovimentos = {}): Promise
     query = query.lt('created_at', fim.toISOString())
   }
   if (filtros.destino)    query = query.ilike('destino_obra', `%${filtros.destino}%`)
+  if (filtros.obraId)     query = query.eq('obra_id', filtros.obraId)
   if (filtros.limit)  query = query.limit(filtros.limit)
   if (filtros.offset) query = query.range(filtros.offset, filtros.offset + (filtros.limit ?? 20) - 1)
 
@@ -91,6 +95,7 @@ export async function listarMovimentosPaginados(
     query = query.lt('created_at', fim.toISOString())
   }
   if (filtros.destino)    query = query.ilike('destino_obra', `%${filtros.destino}%`)
+  if (filtros.obraId)     query = query.eq('obra_id', filtros.obraId)
 
   const { data, error, count } = await query
   if (error) throw error
@@ -106,6 +111,7 @@ export type RegistarMovimentoInput = {
   quantidade: number
   responsavel: string
   destinoObra?: string
+  obraId?: string
   observacoes?: string
 }
 
@@ -117,6 +123,7 @@ export async function registarMovimento(input: RegistarMovimentoInput): Promise<
     p_responsavel: input.responsavel,
     p_destino_obra: input.destinoObra ?? null,
     p_observacoes: input.observacoes ?? null,
+    p_obra_id: input.obraId ?? null,
   })
   if (error) throw error
 }

@@ -158,7 +158,47 @@ Nunca confiar apenas na UI.
 
 ---
 
-## 8. Hospedagem (nota de longo prazo)
+## 8. Custos por Obra (job costing) — como TODOS os dados se ligam
+
+O número que interessa ao CEO, por obra: **quanto custou de verdade vs. quanto
+vamos receber → margem (lucro)**. A OBRA é o ponto de encontro de tudo.
+
+```
+                          ┌───────────────────────────┐
+                          │           OBRA            │
+                          │   orcamento (€ cliente)   │
+                          └─────────────┬─────────────┘
+             obra_id / executado        │        obra_id
+        ┌──────────────────┬────────────┼────────────┬──────────────────┐
+        ▼                  ▼                          ▼                  ▼
+  MOVIMENTOS (saída)  SUBEMPREITEIROS            ABASTECIMENTOS      (futuro:
+  × produtos.custo    → AUTOS validados          comb × custo         RH/horas)
+  = CUSTO MATERIAIS   = CUSTO SUBEMPREITEIROS    = CUSTO COMBUSTÍVEL
+        └──────────────────┴─────────── + ───────┴──────────────────┘
+                                   ║
+                          CUSTO REAL DA OBRA
+                                   ║
+                    MARGEM = orcamento − custo real
+```
+
+**As ligações (todas por CHAVE, não por texto):**
+| Fonte de custo | Como liga à obra | Como se valoriza |
+|---|---|---|
+| **Materiais** | `movimentos_stock.obra_id` (saídas) | `quantidade × produtos.custo_unitario` |
+| **Subempreiteiros** | `subempreiteiros.obra_id` | soma dos `autos_medicao` **validados** (`valor_periodo`) |
+| **Combustível** | `comb_abastecimentos.obra_id` | soma de `custo_total` |
+| **Orçamento** | `obras.orcamento` | valor contratado com o cliente |
+
+**Read-model:** `features/custos/custosService.ts` (`custoObra`,
+`custosMateriaisCombustivelPorObra`) é a camada de composição que junta as três
+fontes. Alimenta: a **Ficha de Obra** (P&L: Orçamento · Custo Real · Margem +
+repartição) e o **Relatório de Obras** (P&L de todas as obras, exportável em PDF).
+
+> Nota: só saídas com `obra_id` (obra escolhida no cadastro) entram no custo de
+> materiais — daí a saída de stock passar a pedir a **obra de destino**. Saídas
+> antigas em texto livre (`destino_obra`) não têm custo imputado.
+
+## 9. Hospedagem (nota de longo prazo)
 
 O plano gratuito da Vercel (Hobby) é só para uso não-comercial. Caminhos:
 - **Imediato/barato:** frontend estático no Cloudflare Pages (permite uso

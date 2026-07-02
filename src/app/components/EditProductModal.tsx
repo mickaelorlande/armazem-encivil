@@ -44,6 +44,7 @@ export function EditProductModal({ product, hasMovements, onClose, onSuccess }: 
     category: product.category,
     unit:     product.unit,
     minStock: String(product.minStock),
+    unitCost: String(product.unitCost ?? 0),
     notes:    product.notes ?? '',
   });
 
@@ -56,6 +57,7 @@ export function EditProductModal({ product, hasMovements, onClose, onSuccess }: 
       category: form.category as ProductCategory,
       unit:     form.unit as Unit,
       minStock: parseFloat(form.minStock) || 0,
+      unitCost: parseFloat(form.unitCost) || 0,
       notes:    form.notes || undefined,
     });
     if (updated) {
@@ -142,19 +144,34 @@ export function EditProductModal({ product, hasMovements, onClose, onSuccess }: 
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Stock Mínimo <span className="text-muted-foreground font-normal text-xs">(para alertas)</span>
-            </label>
-            <input
-              type="number"
-              value={form.minStock}
-              onChange={e => setForm({ ...form, minStock: e.target.value })}
-              className={inputCls}
-              min="0"
-              step="0.01"
-              required
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Stock Mínimo <span className="text-muted-foreground font-normal text-xs">(para alertas)</span>
+              </label>
+              <input
+                type="number"
+                value={form.minStock}
+                onChange={e => setForm({ ...form, minStock: e.target.value })}
+                className={inputCls}
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Custo Unitário (€) <span className="text-muted-foreground font-normal text-xs">(custo por obra)</span>
+              </label>
+              <input
+                type="number"
+                value={form.unitCost}
+                onChange={e => setForm({ ...form, unitCost: e.target.value })}
+                className={inputCls}
+                min="0"
+                step="0.0001"
+              />
+            </div>
           </div>
 
           <div>
