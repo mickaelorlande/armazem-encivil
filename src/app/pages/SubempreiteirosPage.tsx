@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { HardHat, Plus, CheckCircle2, FileEdit, Phone } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { fmtEuro } from '../lib/format';
@@ -11,7 +11,8 @@ export function SubempreiteirosPage() {
   const navigate = useNavigate();
   const { obras } = useObras(true);
   const { podeSubempreitadas } = useRole();
-  const [obraFilter, setObraFilter] = useState<string>('');
+  const [searchParams] = useSearchParams();
+  const [obraFilter, setObraFilter] = useState<string>(searchParams.get('obra') ?? '');
   const { subs, loading } = useSubempreiteiros(obraFilter || undefined);
 
   const totalAcordado = useMemo(() => subs.reduce((s, x) => s + x.agreedValue, 0), [subs]);

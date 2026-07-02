@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { useNavigate, Link } from 'react-router';
 import { Building2, Plus, Pencil, MapPin, User } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { useObras } from '@/features/obras/hooks/useObras';
@@ -35,9 +35,9 @@ export function ObrasPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {obras.map(o => (
-            <div key={o.id} className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-2">
+            <div key={o.id} className="bg-card rounded-2xl border border-border p-4 flex flex-col gap-2 hover:border-primary/40 hover:shadow-sm transition-all">
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
+                <Link to={`/obras/${o.id}`} className="flex items-center gap-2 min-w-0 flex-1">
                   <div className="bg-primary/10 rounded-lg p-2 shrink-0"><Building2 className="w-4 h-4 text-primary" /></div>
                   <div className="min-w-0">
                     <p className="font-semibold truncate">{o.name}</p>
@@ -47,19 +47,21 @@ export function ObrasPage() {
                       {o.status === 'concluida' ? 'Concluída' : 'Ativa'}
                     </span>
                   </div>
-                </div>
+                </Link>
                 {podeObras && (
                   <button onClick={() => navigate(`/obras/${o.id}/editar`)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors shrink-0">
                     <Pencil className="w-4 h-4" />
                   </button>
                 )}
               </div>
-              {o.client && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1.5"><User className="w-3.5 h-3.5 shrink-0" /> {o.client}</p>
-              )}
-              {o.location && (
-                <p className="text-sm text-muted-foreground flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 shrink-0" /> {o.location}</p>
-              )}
+              <Link to={`/obras/${o.id}`} className="flex flex-col gap-2">
+                {o.client && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5"><User className="w-3.5 h-3.5 shrink-0" /> {o.client}</p>
+                )}
+                {o.location && (
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 shrink-0" /> {o.location}</p>
+                )}
+              </Link>
             </div>
           ))}
         </div>

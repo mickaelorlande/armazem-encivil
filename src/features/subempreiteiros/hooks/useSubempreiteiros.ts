@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { Subcontractor } from '@/app/types'
 import {
   listarSubempreiteiros,
+  listarSubempreiteirosComExecutado,
   buscarSubempreiteiro,
   criarSubempreiteiro,
   atualizarSubempreiteiro,
@@ -9,6 +10,7 @@ import {
   validarSubempreiteiro,
   type NovoSubempreiteiro,
   type AtualizarSubempreiteiro,
+  type SubcontractorComExecutado,
 } from '../services/subempreiteirosService'
 
 export function useSubempreiteiros(obraId?: string) {
@@ -31,6 +33,23 @@ export function useSubempreiteiros(obraId?: string) {
   useEffect(() => { load() }, [load])
 
   return { subs, loading, error, reload: load }
+}
+
+export function useSubempreiteirosComExecutado(obraId: string | undefined) {
+  const [subs, setSubs] = useState<SubcontractorComExecutado[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    if (!obraId) { setLoading(false); return }
+    setLoading(true)
+    try { setSubs(await listarSubempreiteirosComExecutado(obraId)) }
+    catch { setSubs([]) }
+    finally { setLoading(false) }
+  }, [obraId])
+
+  useEffect(() => { load() }, [load])
+
+  return { subs, loading, reload: load }
 }
 
 export function useSubempreiteiro(id: string | undefined) {

@@ -79,6 +79,30 @@ export async function buscarSubempreiteiro(id: string): Promise<Subcontractor> {
   return toSubcontractor(data as SubRow)
 }
 
+export type SubcontractorComExecutado = Subcontractor & { executed: number }
+
+// Lista os subempreiteiros de uma obra já com o executado (soma dos autos
+// validados de cada um) — numa única query extra aos autos. Base da Ficha de Obra.
+export async function listarSubempreiteirosComExecutado(obraId: string): Promise<SubcontractorComExecutado[]> {
+  const subs = await listarSubempreiteiros(obraId)
+  if (!subs.length) return []
+
+  const ids = subs.map(s => s.id)
+  const { data, error } = await supabase
+    .from('autos_medicao')
+    .select('subempreiteiro_id, valor_periodo, estado')
+    .in('subempreiteiro_id', ids)
+    .eq('estado', 'validado')
+  if (error) throw error
+
+  const exec: Record<string, number> = {}
+  ;(data as { subempreiteiro_id: string; valor_periodo: number }[]).forEach(r => {
+    exec[r.subempreiteiro_id] = (exec[r.subempreiteiro_id] ?? 0) + Number(r.valor_periodo)
+  })
+
+  return subs.map(s => ({ ...s, executed: exec[s.id] ?? 0 }))
+}
+
 export type ItemInput = {
   description: string
   unit: string

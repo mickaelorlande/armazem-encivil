@@ -1,0 +1,150 @@
+import { useMemo } from 'react';
+import { useNavigate, useParams, Link } from 'react-router';
+import {
+  ChevronLeft, Pencil, Building2, User, MapPin, HardHat, Package,
+  ArrowRight, CheckCircle2, FileEdit,
+} from 'lucide-react';
+import { fmtEuro, fmtNumber } from '../lib/format';
+import { getUnitLabel } from '../data/mockData';
+import { useRole } from '@/features/auth/useRole';
+import { useObra } from '@/features/obras/hooks/useObras';
+import { useSubempreiteirosComExecutado } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
+import { useMovimentos } from '@/features/movimentos/hooks/useMovimentos';
+
+export function ObraDetailPage() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const { podeObras } = useRole();
+
+  const { obra, loading } = useObra(id);
+  const { subs, loading: subsLoading } = useSubempreiteirosComExecutado(id);
+  // Materiais enviados para esta obra — ligação por nome (destino_obra é texto).
+  const { movements, loading: movsLoading } = useMovimentos(
+    obra ? { tipo: 'saida', destino: obra.name } : {}
+  );
+
+  const totais = useMemo(() => {
+    const acordado = subs.reduce((s, x) => s + x.agreedValue, 0);
+    const executado = subs.reduce((s, x) => s + x.executed, 0);
+    return { acordado, executado, falta: acordado - executado };
+  }, [subs]);
+
+  if (loading) return <div className="max-w-3xl mx-auto p-8 text-center text-sm text-muted-foreground">A carregar…</div>;
+  if (!obra) return <div className="max-w-3xl mx-auto p-8 text-center text-sm text-muted-foreground">Obra não encontrada.</div>;
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-4 pb-24">
+      {/* Cabeçalho */}
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate(-1)} className="p-2 hover:bg-accent rounded-lg transition-colors shrink-0">
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="bg-primary/10 rounded-xl p-2.5 shrink-0"><Building2 className="w-5 h-5 text-primary" /></div>
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-2xl font-semibold truncate">{obra.name}</h1>
+            <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded-full ${
+              obra.status === 'concluida' ? 'bg-muted text-muted-foreground' : 'bg-success/10 text-success'
+            }`}>{obra.status === 'concluida' ? 'Concluída' : 'Ativa'}</span>
+          </div>
+        </div>
+        {podeObras && (
+          <button onClick={() => navigate(`/obras/${obra.id}/editar`)} className="flex items-center gap-1.5 px-3.5 py-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors text-sm font-semibold shrink-0">
+            <Pencil className="w-4 h-4" /> <span className="hidden sm:inline">Editar</span>
+          </button>
+        )}
+      </div>
+
+      {(obra.client || obra.location) && (
+        <div className="bg-card rounded-2xl border border-border divide-y divide-border">
+          {obra.client && (
+            <div className="px-5 py-3 flex items-center gap-2 text-sm"><User className="w-4 h-4 text-muted-foreground shrink-0" /> <span className="text-muted-foreground">Cliente:</span> <span className="font-medium">{obra.client}</span></div>
+          )}
+          {obra.location && (
+            <div className="px-5 py-3 flex items-center gap-2 text-sm"><MapPin className="w-4 h-4 text-muted-foreground shrink-0" /> <span className="text-muted-foreground">Local:</span> <span className="font-medium">{obra.location}</span></div>
+          )}
+        </div>
+      )}
+
+      {/* Custos com subempreiteiros */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-card rounded-2xl border border-border p-4 text-center">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Contratado</p>
+          <p className="text-base md:text-lg font-bold mt-1 text-primary">{fmtEuro(totais.acordado)}</p>
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-4 text-center">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Executado</p>
+          <p className="text-base md:text-lg font-bold mt-1 text-success">{fmtEuro(totais.executado)}</p>
+        </div>
+        <div className="bg-card rounded-2xl border border-border p-4 text-center">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Falta</p>
+          <p className="text-base md:text-lg font-bold mt-1">{fmtEuro(totais.falta)}</p>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground text-center -mt-1">
+        Valores de subempreiteiros. Materiais e combustível entram no custo total à medida que ganham preço.
+      </p>
+
+      {/* Subempreiteiros da obra */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
+          <h2 className="font-semibold text-sm flex items-center gap-2"><HardHat className="w-4 h-4" /> Subempreiteiros</h2>
+          <Link to={`/subempreiteiros?obra=${obra.id}`} className="text-xs font-medium text-primary hover:underline">Ver todos</Link>
+        </div>
+        {subsLoading ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">A carregar…</p>
+        ) : subs.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">Ainda não há subempreiteiros nesta obra.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {subs.map(s => (
+              <Link key={s.id} to={`/subempreiteiros/${s.id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-accent/40 transition-colors">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{s.name}</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    {s.status === 'validado'
+                      ? <><CheckCircle2 className="w-3 h-3 text-success" /> Validado</>
+                      : <><FileEdit className="w-3 h-3 text-warning" /> Rascunho</>}
+                    · exec. {fmtEuro(s.executed)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-sm font-bold">{fmtEuro(s.agreedValue)}</span>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Materiais enviados para a obra */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
+          <h2 className="font-semibold text-sm flex items-center gap-2"><Package className="w-4 h-4" /> Materiais enviados</h2>
+          <Link to={`/historico?tipo=saida`} className="text-xs font-medium text-primary hover:underline">Histórico</Link>
+        </div>
+        {movsLoading ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">A carregar…</p>
+        ) : movements.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">Sem saídas de material registadas para esta obra.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {movements.slice(0, 10).map(m => (
+              <div key={m.id} className="flex items-center justify-between gap-3 px-5 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{m.productName}</p>
+                  <p className="text-xs text-muted-foreground">{m.date.toLocaleDateString('pt-PT')}{m.responsible ? ` · ${m.responsible}` : ''}</p>
+                </div>
+                <span className="text-sm font-semibold whitespace-nowrap">{fmtNumber(m.quantity)} {getUnitLabel(m.unit)}</span>
+              </div>
+            ))}
+            {movements.length > 10 && (
+              <p className="px-5 py-2.5 text-xs text-muted-foreground text-center">+ {movements.length - 10} mais no histórico</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
