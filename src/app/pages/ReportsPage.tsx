@@ -486,7 +486,7 @@ function PrintReport({ data, onClose }: { data: PrintData; onClose: () => void }
           borderTop: `3px solid ${NAVY}`, margin: '0 32px', padding: '14px 0',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: SLATE,
         }}>
-          <span>Gerado automaticamente pelo Sistema de Controlo de Armazém ENCIVIL</span>
+          <span>Gerado automaticamente pelo ENCIVIL Gestão</span>
           <span style={{ fontWeight: 600 }}>© 2026 ENCIVIL</span>
         </div>
       </div>
@@ -948,7 +948,7 @@ function ToolsPrintReport({ data, onClose }: { data: ToolsReportData; onClose: (
           borderTop: `3px solid ${NAVY}`, margin: '0 32px', padding: '14px 0',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: SLATE,
         }}>
-          <span>Gerado automaticamente pelo Sistema de Controlo de Armazém ENCIVIL</span>
+          <span>Gerado automaticamente pelo ENCIVIL Gestão</span>
           <span style={{ fontWeight: 600 }}>© 2026 ENCIVIL</span>
         </div>
       </div>

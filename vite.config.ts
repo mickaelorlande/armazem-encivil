@@ -33,9 +33,9 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
-        name: 'Controle Armazém ENCIVIL',
-        short_name: 'Armazém ENCIVIL',
-        description: 'Sistema interno de controlo de armazém da ENCIVIL',
+        name: 'ENCIVIL Gestão',
+        short_name: 'ENCIVIL Gestão',
+        description: 'Sistema interno de gestão da ENCIVIL — armazém, obras, ferramentas e mais',
         theme_color: '#1e3a8a',
         background_color: '#1e3a8a',
         display: 'standalone',

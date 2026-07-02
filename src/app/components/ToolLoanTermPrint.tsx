@@ -231,7 +231,7 @@ export function ToolLoanTermPrint({ loan, tool, config, onClose }: Props) {
         )}
 
         <p style={{ fontSize: 10, color: SLATE, textAlign: 'center', marginTop: 40 }}>
-          Documento gerado pelo Sistema de Controlo de Armazém {config?.nomeEmpresa ?? 'ENCIVIL'} em {fmtDate(new Date())}
+          Documento gerado pelo ENCIVIL Gestão em {fmtDate(new Date())}
         </p>
       </div>
     </div>,

@@ -41,9 +41,9 @@ export function LoginPage() {
               className="w-24 h-24 object-contain mb-5"
               draggable={false}
             />
-            <h1 className="text-2xl font-semibold text-foreground mb-1">ENCIVIL</h1>
+            <h1 className="text-2xl font-semibold text-foreground mb-1">ENCIVIL Gestão</h1>
             <p className="text-sm text-muted-foreground text-center">
-              Sistema interno de controlo de armazém
+              Sistema interno de gestão da empresa
             </p>
           </div>
 

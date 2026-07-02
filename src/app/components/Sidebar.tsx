@@ -54,7 +54,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           </div>
           <div>
             <h1 className="text-white text-base font-semibold leading-tight">ENCIVIL</h1>
-            <p className="text-xs text-sidebar-foreground/70 leading-tight">Controle Armazém</p>
+            <p className="text-xs text-sidebar-foreground/70 leading-tight">Gestão</p>
           </div>
         </div>
         {onMobileClose && (

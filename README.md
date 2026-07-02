@@ -1,6 +1,6 @@
-# Controle Armazém ENCIVIL
+# ENCIVIL Gestão
 
-Sistema web interno para controlo de materiais de armazém da empresa ENCIVIL.
+Sistema web interno de gestão da empresa ENCIVIL — armazém, obras, subempreiteiros, ferramentas e mais.
 
 **Estado: em produção.** [armazem-encivil.vercel.app](https://armazem-encivil.vercel.app)
 
