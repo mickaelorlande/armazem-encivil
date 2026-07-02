@@ -22,11 +22,14 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
-      // Registamos o SW manualmente em main.tsx (virtual:pwa-register) para
-      // poder forçar verificações periódicas — sem isto o browser só
-      // verifica por uma versão nova a cada ~24h e o telemóvel fica "preso"
-      // no bundle antigo durante muito tempo depois de cada deploy.
+      // 'prompt': o novo SW fica em estado "waiting" e a app mostra um aviso
+      // com botão "Atualizar" (ver UpdatePrompt.tsx). Muito mais fiável do que
+      // o reload silencioso do 'autoUpdate', que em PWA no iOS não ativava de
+      // forma consistente — o telemóvel ficava preso no bundle antigo.
+      registerType: 'prompt',
+      // Registamos o SW manualmente (virtual:pwa-register/react no UpdatePrompt)
+      // para poder forçar verificações periódicas — sem isto o browser só
+      // verifica por uma versão nova a cada ~24h.
       injectRegister: false,
       includeAssets: ['favicon.ico', 'icon.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
@@ -66,8 +69,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Activate new SW immediately — prevents stale-SW / new-index.html mismatch
-        skipWaiting: true,
+        // NÃO usar skipWaiting: no modo 'prompt' queremos que o novo SW espere
+        // em "waiting" até o utilizador confirmar a atualização. É o clique no
+        // botão que dispara o skipWaiting (updateServiceWorker(true)).
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         navigateFallback: '/index.html',
