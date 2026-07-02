@@ -1,11 +1,25 @@
-import { Package, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Package, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight, Building2, HardHat, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { Link } from 'react-router';
 import { StatCard } from '../components/StatCard';
 import { StockBadge } from '../components/StockBadge';
 import { MovementTypeBadge } from '../components/MovementTypeBadge';
 import { getUnitLabel } from '../data/mockData';
+import { fmtEuro } from '../lib/format';
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
+import { useResumoObras } from '@/features/dashboard/hooks/useResumoObras';
 import { useRole } from '@/features/auth/useRole';
+
+function ObraKpi({ label, value, icon: Icon, color }: { label: string; value: string; icon: typeof Building2; color: string }) {
+  return (
+    <div className="bg-card rounded-xl border border-border p-4">
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <p className="text-xs text-muted-foreground leading-tight">{label}</p>
+        <Icon className={`w-4 h-4 shrink-0 ${color}`} />
+      </div>
+      <p className={`text-lg md:text-xl font-bold ${color}`}>{value}</p>
+    </div>
+  );
+}
 
 function SkeletonRow() {
   return (
@@ -36,14 +50,17 @@ function SkeletonCard() {
 
 export function DashboardPage() {
   const { stats, loading } = useDashboard();
-  const { podeArmazem } = useRole();
+  const { resumo, loading: obrasLoading } = useResumoObras();
+  const { podeArmazem, podeValidar } = useRole();
+
+  const porValidar = (resumo?.contratosPorValidar ?? 0) + (resumo?.autosPorValidar ?? 0);
 
   return (
     <div className="space-y-5">
 
       <div>
         <h1 className="text-xl md:text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Visão geral do armazém ENCIVIL</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Visão geral · ENCIVIL Gestão</p>
       </div>
 
       {podeArmazem && (
@@ -65,7 +82,48 @@ export function DashboardPage() {
         </div>
       )}
 
+      {/* ── Gestão de Obras ─────────────────────────────── */}
+      <div className="enc-fade-up">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold text-base flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-primary" /> Obras
+          </h2>
+          <Link to="/obras" className="text-sm text-primary hover:underline flex items-center gap-1">
+            Ver obras <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+
+        {porValidar > 0 && podeValidar && (
+          <Link
+            to="/subempreiteiros"
+            className="mb-3 flex items-center gap-3 p-3.5 bg-warning/10 border border-warning/30 rounded-xl hover:bg-warning/15 transition-colors"
+          >
+            <ShieldAlert className="w-5 h-5 text-warning shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">{porValidar} {porValidar === 1 ? 'item aguarda' : 'itens aguardam'} validação</p>
+              <p className="text-xs text-muted-foreground">
+                {resumo!.contratosPorValidar > 0 && `${resumo!.contratosPorValidar} contrato${resumo!.contratosPorValidar !== 1 ? 's' : ''}`}
+                {resumo!.contratosPorValidar > 0 && resumo!.autosPorValidar > 0 && ' · '}
+                {resumo!.autosPorValidar > 0 && `${resumo!.autosPorValidar} auto${resumo!.autosPorValidar !== 1 ? 's' : ''}`}
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          </Link>
+        )}
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <ObraKpi label="Obras Ativas"  value={obrasLoading ? '…' : String(resumo?.obrasAtivas ?? 0)} icon={Building2}    color="text-primary" />
+          <ObraKpi label="Contratado"    value={obrasLoading ? '…' : fmtEuro(resumo?.totalContratado)} icon={HardHat}      color="text-foreground" />
+          <ObraKpi label="Executado"     value={obrasLoading ? '…' : fmtEuro(resumo?.totalExecutado)}  icon={CheckCircle2} color="text-success" />
+          <ObraKpi label="Falta"         value={obrasLoading ? '…' : fmtEuro(resumo?.totalFalta)}      icon={AlertTriangle} color="text-warning" />
+        </div>
+      </div>
+
       {/* KPI cards — stagger entrada (Linear/Stripe pattern) */}
+      <div className="flex items-center gap-2 pt-1">
+        <Package className="w-4 h-4 text-muted-foreground" />
+        <h2 className="font-semibold text-base">Armazém</h2>
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <StatCard
           title="Total Produtos"

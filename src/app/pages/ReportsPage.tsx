@@ -7,15 +7,18 @@ import {
 import {
   BarChart3, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle,
   AlertTriangle, Printer, ChevronUp, ChevronDown, Minus, X, FileText,
-  Wrench, Boxes,
+  Wrench, Boxes, Building2, HardHat, CheckCircle2,
 } from 'lucide-react'
 import { listarMovimentos } from '@/features/movimentos/services/movimentosService'
 import { listarProdutos } from '@/features/produtos/services/produtosService'
 import { listarFerramentas } from '@/features/ferramentas/services/ferramentasService'
 import { listarEmprestimos } from '@/features/ferramentas/services/emprestimosService'
+import { listarObras } from '@/features/obras/services/obrasService'
+import { listarSubempreiteirosComExecutado } from '@/features/subempreiteiros/services/subempreiteirosService'
 import { getUnitLabel, getToolCategoryLabel } from '../data/mockData'
+import { fmtEuro } from '../lib/format'
 import { ToolStatusBadge } from '../components/ToolStatusBadge'
-import type { Movement, Product, Tool, ToolLoan } from '../types'
+import type { Movement, Product, Tool, ToolLoan, Obra } from '../types'
 
 /* ─── Tipos e helpers ───────────────────────────────────────────── */
 
@@ -957,10 +960,194 @@ function ToolsPrintReport({ data, onClose }: { data: ToolsReportData; onClose: (
   )
 }
 
+/* ─── Relatório de Obras ────────────────────────────────────────── */
+
+type ObraLinha = {
+  obra: Obra
+  numSubs: number
+  contratado: number
+  executado: number
+  falta: number
+}
+
+type ObrasReportData = {
+  loading: boolean
+  linhas: ObraLinha[]
+}
+
+function ObrasReportSection({ loading, linhas }: ObrasReportData) {
+  const totalContratado = linhas.reduce((s, l) => s + l.contratado, 0)
+  const totalExecutado  = linhas.reduce((s, l) => s + l.executado, 0)
+  const totalFalta      = totalContratado - totalExecutado
+  const obrasComContrato = linhas.filter(l => l.numSubs > 0).length
+
+  return (
+    <div className="space-y-6 pb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <KpiCard label="Obras com Contratos" value={obrasComContrato} icon={Building2}    iconBg="bg-primary/10"  valueColor="text-primary"     trend={null} loading={loading} />
+        <KpiCard label="Contratado"          value={fmtEuro(totalContratado)} icon={HardHat} iconBg="bg-primary/10" valueColor="text-foreground" trend={null} loading={loading} />
+        <KpiCard label="Executado"           value={fmtEuro(totalExecutado)}  icon={CheckCircle2} iconBg="bg-success/10" valueColor="text-success" trend={null} loading={loading} />
+        <KpiCard label="Falta"               value={fmtEuro(totalFalta)}      icon={AlertTriangle} iconBg="bg-warning/10" valueColor="text-warning" trend={null} loading={loading} />
+      </div>
+
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border bg-muted/30">
+          <h2 className="font-semibold text-base">Custos por Obra</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Subempreiteiros contratados e executado (autos validados)</p>
+        </div>
+        {loading ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+        ) : linhas.filter(l => l.numSubs > 0).length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">Ainda não há subempreiteiros contratados em nenhuma obra.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  {['Obra', 'Subs', 'Contratado', 'Executado', 'Falta', '%'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {linhas.filter(l => l.numSubs > 0).map(l => {
+                  const pct = l.contratado > 0 ? Math.round((l.executado / l.contratado) * 100) : 0
+                  return (
+                    <tr key={l.obra.id} className="hover:bg-accent/40 transition-colors">
+                      <td className="px-4 py-3 font-medium">{l.obra.name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{l.numSubs}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{fmtEuro(l.contratado)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-success">{fmtEuro(l.executado)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap font-semibold">{fmtEuro(l.falta)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{pct}%</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ObrasPrintReport({ data, onClose }: { data: ObrasReportData; onClose: () => void }) {
+  useEffect(() => {
+    const s = document.createElement('style')
+    s.id = 'encivil-print-css-obras'
+    s.textContent = `
+      @media print {
+        body > *:not(#encivil-print-root-obras) { display: none !important; }
+        #encivil-print-root-obras { display: block !important; position: static !important; overflow: visible !important; }
+        #encivil-print-root-obras * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .no-print { display: none !important; }
+        @page { margin: 12mm 15mm; size: A4 portrait; }
+      }
+    `
+    document.head.appendChild(s)
+    return () => { document.getElementById('encivil-print-css-obras')?.remove() }
+  }, [])
+
+  const linhas = data.linhas.filter(l => l.numSubs > 0)
+  const totalContratado = linhas.reduce((s, l) => s + l.contratado, 0)
+  const totalExecutado  = linhas.reduce((s, l) => s + l.executado, 0)
+  const totalFalta      = totalContratado - totalExecutado
+  const today = fmt(new Date())
+
+  const NAVY = '#1e3a8a', GREEN = '#16a34a', SLATE = '#64748b', LIGHT = '#f8fafc', BORDER = '#e2e8f0'
+
+  return createPortal(
+    <div id="encivil-print-root-obras" style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 9999, overflowY: 'auto' }}>
+      <div className="no-print" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white', borderBottom: `1px solid ${BORDER}`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FileText style={{ width: 16, height: 16, color: NAVY }} />
+          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Pré-visualização · Relatório de Obras ENCIVIL</span>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13, background: 'white', cursor: 'pointer', color: '#374151' }}>
+            <X style={{ width: 14, height: 14 }} /> Fechar
+          </button>
+          <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: NAVY, color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <Printer style={{ width: 14, height: 14 }} /> Imprimir / Salvar PDF
+          </button>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 794, margin: '0 auto', background: 'white', padding: '0 0 40px' }}>
+        <div style={{ background: NAVY, color: 'white', padding: '24px 32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ background: 'white', borderRadius: 10, padding: 6, width: 52, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img src="/icone_oficial.png" alt="ENCIVIL" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>ENCIVIL</div>
+                <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>Relatório de Obras</div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: 12, opacity: 0.7 }}>Gerado em {today}</div>
+          </div>
+          <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.2)', display: 'flex', gap: 28, fontSize: 12, opacity: 0.85 }}>
+            <span>Contratado: <strong>{fmtEuro(totalContratado)}</strong></span>
+            <span>Executado: <strong style={{ color: '#86efac' }}>{fmtEuro(totalExecutado)}</strong></span>
+            <span>Falta: <strong style={{ color: '#fde68a' }}>{fmtEuro(totalFalta)}</strong></span>
+          </div>
+        </div>
+
+        <div style={{ padding: '28px 32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div style={{ width: 4, height: 20, background: NAVY, borderRadius: 2 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Custos por Obra</span>
+          </div>
+          {linhas.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: SLATE, fontSize: 13, background: LIGHT, borderRadius: 10, border: `1px solid ${BORDER}` }}>
+              Sem subempreiteiros contratados.
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ background: NAVY, color: 'white' }}>
+                  {['Obra', 'Subs', 'Contratado', 'Executado', 'Falta'].map((h, i) => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: i === 0 ? 'left' : i === 1 ? 'center' : 'right', fontWeight: 600, fontSize: 11 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((l, i) => (
+                  <tr key={l.obra.id} style={{ background: i % 2 === 0 ? 'white' : LIGHT }}>
+                    <td style={{ padding: '9px 12px', borderBottom: `1px solid ${BORDER}` }}>{l.obra.name}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'center', color: SLATE, borderBottom: `1px solid ${BORDER}` }}>{l.numSubs}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.contratado)}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', color: GREEN, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.executado)}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.falta)}</td>
+                  </tr>
+                ))}
+                <tr style={{ background: '#eef2ff', fontWeight: 700 }}>
+                  <td style={{ padding: '10px 12px' }} colSpan={2}>TOTAL</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>{fmtEuro(totalContratado)}</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', color: GREEN }}>{fmtEuro(totalExecutado)}</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>{fmtEuro(totalFalta)}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div style={{ borderTop: `3px solid ${NAVY}`, margin: '0 32px', padding: '14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: SLATE }}>
+          <span>Gerado automaticamente pelo ENCIVIL Gestão</span>
+          <span style={{ fontWeight: 600 }}>© 2026 ENCIVIL</span>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 /* ─── Página principal ──────────────────────────────────────────── */
 
 export function ReportsPage() {
-  const [reportType, setReportType] = useState<'stock' | 'ferramentas'>('stock')
+  const [reportType, setReportType] = useState<'stock' | 'ferramentas' | 'obras'>('stock')
   const [period, setPeriod]   = useState<Period>('mes')
   const [loading, setLoading] = useState(true)
   const [current,  setCurrent]  = useState<Movement[]>([])
@@ -975,6 +1162,10 @@ export function ReportsPage() {
   const [loansPrevious, setLoansPrevious] = useState<ToolLoan[]>([])
   const [loansActive,   setLoansActive]   = useState<ToolLoan[]>([])
   const [showToolsPrint, setShowToolsPrint] = useState(false)
+
+  const [obrasLoading, setObrasLoading] = useState(true)
+  const [obrasLinhas, setObrasLinhas] = useState<ObraLinha[]>([])
+  const [showObrasPrint, setShowObrasPrint] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -1012,6 +1203,25 @@ export function ReportsPage() {
       .finally(() => { if (!cancelled) setToolsLoading(false) })
     return () => { cancelled = true }
   }, [toolsPeriod])
+
+  useEffect(() => {
+    let cancelled = false
+    setObrasLoading(true)
+    Promise.all([listarObras(false), listarSubempreiteirosComExecutado()])
+      .then(([obras, subs]) => {
+        if (cancelled) return
+        const linhas: ObraLinha[] = obras.map(obra => {
+          const daObra = subs.filter(s => s.obraId === obra.id)
+          const contratado = daObra.reduce((sum, s) => sum + s.agreedValue, 0)
+          const executado  = daObra.reduce((sum, s) => sum + s.executed, 0)
+          return { obra, numSubs: daObra.length, contratado, executado, falta: contratado - executado }
+        }).sort((a, b) => b.contratado - a.contratado)
+        setObrasLinhas(linhas)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setObrasLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   /* Valores derivados */
   const currEntries = useMemo(() => current.filter(m => m.type === 'entrada').length, [current])
@@ -1081,12 +1291,12 @@ export function ReportsPage() {
             <div>
               <h1 className="text-lg md:text-xl font-bold leading-tight">Relatório Executivo</h1>
               <p className="text-white/70 text-sm mt-0.5">
-                {reportType === 'stock' ? 'Análise de armazém' : 'Análise de ferramentas'} · ENCIVIL
+                {reportType === 'stock' ? 'Análise de armazém' : reportType === 'ferramentas' ? 'Análise de ferramentas' : 'Análise de obras'} · ENCIVIL
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {reportType === 'stock' ? (
+            {reportType === 'stock' && (
               <select
                 value={period}
                 onChange={e => setPeriod(e.target.value as Period)}
@@ -1097,7 +1307,8 @@ export function ReportsPage() {
                 <option value="mes"    className="text-foreground bg-card">Este Mês</option>
                 <option value="ano"    className="text-foreground bg-card">Este Ano</option>
               </select>
-            ) : (
+            )}
+            {reportType === 'ferramentas' && (
               <select
                 value={toolsPeriod}
                 onChange={e => setToolsPeriod(e.target.value as Period)}
@@ -1110,7 +1321,7 @@ export function ReportsPage() {
               </select>
             )}
             <button
-              onClick={() => reportType === 'stock' ? setShowPrint(true) : setShowToolsPrint(true)}
+              onClick={() => reportType === 'stock' ? setShowPrint(true) : reportType === 'ferramentas' ? setShowToolsPrint(true) : setShowObrasPrint(true)}
               className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium transition-colors"
             >
               <Printer className="w-4 h-4" />
@@ -1121,12 +1332,14 @@ export function ReportsPage() {
         <p className="text-white/60 text-xs mt-3">
           {reportType === 'stock'
             ? `${periodLabel} · comparado com ${prevLabel}`
-            : `${getPeriodConfig(toolsPeriod).label} · comparado com ${getPeriodConfig(toolsPeriod).prevLabel}`}
+            : reportType === 'ferramentas'
+            ? `${getPeriodConfig(toolsPeriod).label} · comparado com ${getPeriodConfig(toolsPeriod).prevLabel}`
+            : 'Situação atual · contratado vs. executado'}
         </p>
       </div>
 
-      {/* ── Switcher Stock / Ferramentas ──────────────────── */}
-      <div className="flex gap-2 bg-card rounded-2xl border border-border p-1.5 w-fit">
+      {/* ── Switcher Stock / Ferramentas / Obras ──────────── */}
+      <div className="flex flex-wrap gap-2 bg-card rounded-2xl border border-border p-1.5 w-fit max-w-full">
         <button
           onClick={() => setReportType('stock')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
@@ -1143,7 +1356,19 @@ export function ReportsPage() {
         >
           <Wrench className="w-4 h-4" /> Ferramentas
         </button>
+        <button
+          onClick={() => setReportType('obras')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            reportType === 'obras' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Building2 className="w-4 h-4" /> Obras
+        </button>
       </div>
+
+      {reportType === 'obras' && (
+        <ObrasReportSection loading={obrasLoading} linhas={obrasLinhas} />
+      )}
 
       {reportType === 'ferramentas' && (
         <ToolsReportSection
@@ -1307,6 +1532,13 @@ export function ReportsPage() {
             prevLabel: getPeriodConfig(toolsPeriod).prevLabel,
           }}
           onClose={() => setShowToolsPrint(false)}
+        />
+      )}
+
+      {showObrasPrint && (
+        <ObrasPrintReport
+          data={{ loading: obrasLoading, linhas: obrasLinhas }}
+          onClose={() => setShowObrasPrint(false)}
         />
       )}
     </div>

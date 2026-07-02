@@ -81,9 +81,10 @@ export async function buscarSubempreiteiro(id: string): Promise<Subcontractor> {
 
 export type SubcontractorComExecutado = Subcontractor & { executed: number }
 
-// Lista os subempreiteiros de uma obra já com o executado (soma dos autos
-// validados de cada um) — numa única query extra aos autos. Base da Ficha de Obra.
-export async function listarSubempreiteirosComExecutado(obraId: string): Promise<SubcontractorComExecutado[]> {
+// Lista subempreiteiros já com o executado (soma dos autos validados de cada
+// um) — numa única query extra aos autos. Com obraId filtra por obra (Ficha de
+// Obra); sem obraId devolve todos (dashboard e relatório de obras).
+export async function listarSubempreiteirosComExecutado(obraId?: string): Promise<SubcontractorComExecutado[]> {
   const subs = await listarSubempreiteiros(obraId)
   if (!subs.length) return []
 
