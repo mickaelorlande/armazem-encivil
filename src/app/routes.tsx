@@ -88,6 +88,7 @@ import { ToolFormPage } from './pages/ToolFormPage';
 import { ToolLoanPage } from './pages/ToolLoanPage';
 import { ToolReturnPage } from './pages/ToolReturnPage';
 import { ObrasPage } from './pages/ObrasPage';
+import { ObraFormPage } from './pages/ObraFormPage';
 import { SubempreiteirosPage } from './pages/SubempreiteirosPage';
 import { SubempreiteiroFormPage } from './pages/SubempreiteiroFormPage';
 import { SubempreiteiroDetailPage } from './pages/SubempreiteiroDetailPage';
@@ -123,6 +124,8 @@ export const router = createBrowserRouter([
           { path: 'ferramentas/:id/editar',    element: <ToolFormPage /> },
           { path: 'ferramentas/:id/devolucao', element: <ToolReturnPage /> },
           { path: 'obras',                    element: <ObrasPage /> },
+          { path: 'obras/nova',               element: <ObraFormPage /> },
+          { path: 'obras/:id/editar',         element: <ObraFormPage /> },
           { path: 'subempreiteiros',          element: <SubempreiteirosPage /> },
           { path: 'subempreiteiros/novo',     element: <SubempreiteiroFormPage /> },
           { path: 'subempreiteiros/:id',      element: <SubempreiteiroDetailPage /> },

@@ -35,6 +35,12 @@ export async function listarObras(apenasAtivas = true): Promise<Obra[]> {
   return (data as ObraRow[]).map(toObra)
 }
 
+export async function buscarObra(id: string): Promise<Obra> {
+  const { data, error } = await supabase.from('obras').select('*').eq('id', id).single()
+  if (error) throw error
+  return toObra(data as ObraRow)
+}
+
 export type NovaObra = {
   name: string
   client?: string
