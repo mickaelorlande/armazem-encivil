@@ -308,6 +308,7 @@ export type Database = {
           funcionario_documento: string | null
           funcionario_nome: string
           id: string
+          obra_id: string | null
           observacoes: string | null
           observacoes_devolucao: string | null
           responsavel_entrega: string
@@ -334,6 +335,7 @@ export type Database = {
           funcionario_documento?: string | null
           funcionario_nome: string
           id?: string
+          obra_id?: string | null
           observacoes?: string | null
           observacoes_devolucao?: string | null
           responsavel_entrega: string
@@ -360,6 +362,7 @@ export type Database = {
           funcionario_documento?: string | null
           funcionario_nome?: string
           id?: string
+          obra_id?: string | null
           observacoes?: string | null
           observacoes_devolucao?: string | null
           responsavel_entrega?: string
@@ -372,6 +375,13 @@ export type Database = {
             columns: ["ferramenta_id"]
             isOneToOne: false
             referencedRelation: "ferramentas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emprestimos_ferramentas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
             referencedColumns: ["id"]
           },
         ]
@@ -742,6 +752,7 @@ export type Database = {
           funcionario_documento: string | null
           funcionario_nome: string
           id: string
+          obra_id: string | null
           observacoes: string | null
           observacoes_devolucao: string | null
           responsavel_entrega: string
@@ -763,6 +774,7 @@ export type Database = {
           p_ferramenta_id: string
           p_funcionario_documento?: string
           p_funcionario_nome: string
+          p_obra_id?: string
           p_observacoes?: string
           p_responsavel_entrega: string
         }
@@ -786,6 +798,7 @@ export type Database = {
           funcionario_documento: string | null
           funcionario_nome: string
           id: string
+          obra_id: string | null
           observacoes: string | null
           observacoes_devolucao: string | null
           responsavel_entrega: string

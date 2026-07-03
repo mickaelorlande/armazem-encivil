@@ -6,6 +6,7 @@ import { ToolCombobox } from '../components/ToolCombobox';
 import { SignaturePad } from '../components/SignaturePad';
 import { useFerramentas } from '@/features/ferramentas/hooks/useFerramentas';
 import { useRegistarEmprestimo } from '@/features/ferramentas/hooks/useEmprestimos';
+import { useObras } from '@/features/obras/hooks/useObras';
 import { useRole } from '@/features/auth/useRole';
 
 const inputCls = 'w-full px-4 py-3.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-base';
@@ -15,6 +16,7 @@ export function ToolLoanPage() {
   const location = useLocation();
   const { nome } = useRole();
   const { tools, loading: loadingTools } = useFerramentas();
+  const { obras } = useObras(true);
   const { registar, loading } = useRegistarEmprestimo();
 
   const presetToolId = new URLSearchParams(location.search).get('ferramenta') ?? '';
@@ -24,11 +26,13 @@ export function ToolLoanPage() {
     employeeName: '',
     employeeDocument: '',
     destination: '',
+    obraId: '',
     expectedReturnDate: '',
     deliveryCondition: 'Bom estado',
     deliveredBy: nome,
     notes: '',
   });
+  const [outroDestino, setOutroDestino] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
   const [responsibleSignature, setResponsibleSignature] = useState<string | null>(null);
 
@@ -41,6 +45,12 @@ export function ToolLoanPage() {
     if (!formData.toolId) { toast.error('Selecione uma ferramenta.'); return; }
     if (!signature) { toast.error('A assinatura do funcionário é obrigatória.'); return; }
     if (!responsibleSignature) { toast.error('A assinatura de quem está a entregar é obrigatória.'); return; }
+
+    const obraSel = obras.find(o => o.id === formData.obraId);
+    const usaObra = !outroDestino;
+    const destinoFinal = usaObra ? obraSel?.name : (formData.destination || undefined);
+    const obraIdFinal = usaObra ? (formData.obraId || undefined) : undefined;
+
     const result = await registar({
       toolId: formData.toolId,
       employeeName: formData.employeeName,
@@ -48,7 +58,8 @@ export function ToolLoanPage() {
       signature,
       responsibleSignature,
       employeeDocument: formData.employeeDocument || undefined,
-      destination: formData.destination || undefined,
+      destination: destinoFinal,
+      obraId: obraIdFinal,
       expectedReturnDate: formData.expectedReturnDate || undefined,
       deliveryCondition: formData.deliveryCondition || undefined,
       notes: formData.notes || undefined,
@@ -97,10 +108,22 @@ export function ToolLoanPage() {
             <input type="text" value={formData.employeeDocument} onChange={e => setFormData({ ...formData, employeeDocument: e.target.value })} className={inputCls} placeholder="Documento de identificação" />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Destino / Obra <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
-            </label>
-            <input type="text" value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} className={inputCls} placeholder="Onde vai ser usada" />
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium">
+                Obra de Destino <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
+              </label>
+              <button type="button" onClick={() => setOutroDestino(v => !v)} className="text-xs font-medium text-primary hover:underline">
+                {outroDestino ? 'Escolher obra' : 'Outro destino'}
+              </button>
+            </div>
+            {outroDestino ? (
+              <input type="text" value={formData.destination} onChange={e => setFormData({ ...formData, destination: e.target.value })} className={inputCls} placeholder="Destino sem obra formal" />
+            ) : (
+              <select value={formData.obraId} onChange={e => setFormData({ ...formData, obraId: e.target.value })} className={inputCls}>
+                <option value="">Sem obra associada</option>
+                {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">

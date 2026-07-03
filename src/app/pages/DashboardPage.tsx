@@ -1,4 +1,4 @@
-import { Package, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight, Building2, HardHat, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Package, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight, Building2, Wallet, TrendingDown, TrendingUp, ShieldAlert } from 'lucide-react';
 import { Link } from 'react-router';
 import { StatCard } from '../components/StatCard';
 import { StockBadge } from '../components/StockBadge';
@@ -112,10 +112,10 @@ export function DashboardPage() {
         )}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          <ObraKpi label="Obras Ativas"  value={obrasLoading ? '…' : String(resumo?.obrasAtivas ?? 0)} icon={Building2}    color="text-primary" />
-          <ObraKpi label="Contratado"    value={obrasLoading ? '…' : fmtEuro(resumo?.totalContratado)} icon={HardHat}      color="text-foreground" />
-          <ObraKpi label="Executado"     value={obrasLoading ? '…' : fmtEuro(resumo?.totalExecutado)}  icon={CheckCircle2} color="text-success" />
-          <ObraKpi label="Falta"         value={obrasLoading ? '…' : fmtEuro(resumo?.totalFalta)}      icon={AlertTriangle} color="text-warning" />
+          <ObraKpi label="Obras Ativas" value={obrasLoading ? '…' : String(resumo?.obrasAtivas ?? 0)} icon={Building2}    color="text-primary" />
+          <ObraKpi label="Orçamento"    value={obrasLoading ? '…' : fmtEuro(resumo?.totalOrcamento)}  icon={Wallet}       color="text-foreground" />
+          <ObraKpi label="Custo Real"   value={obrasLoading ? '…' : fmtEuro(resumo?.custoReal)}       icon={TrendingDown} color="text-destructive" />
+          <ObraKpi label="Margem"       value={obrasLoading ? '…' : fmtEuro(resumo?.margem)}          icon={TrendingUp}   color={(resumo?.margem ?? 0) >= 0 ? 'text-success' : 'text-destructive'} />
         </div>
       </div>
 

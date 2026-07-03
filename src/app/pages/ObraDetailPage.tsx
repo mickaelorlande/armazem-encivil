@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router';
 import {
   ChevronLeft, Pencil, Building2, User, MapPin, HardHat, Package,
-  ArrowRight, CheckCircle2, FileEdit, Fuel, Wallet, TrendingUp, TrendingDown,
+  ArrowRight, CheckCircle2, FileEdit, Fuel, Wallet, TrendingUp, TrendingDown, Wrench,
 } from 'lucide-react';
 import { fmtEuro, fmtNumber } from '../lib/format';
 import { getUnitLabel } from '../data/mockData';
@@ -11,6 +11,7 @@ import { useObra } from '@/features/obras/hooks/useObras';
 import { useSubempreiteirosComExecutado } from '@/features/subempreiteiros/hooks/useSubempreiteiros';
 import { useMovimentos } from '@/features/movimentos/hooks/useMovimentos';
 import { useAbastecimentos } from '@/features/combustivel/hooks/useCombustivel';
+import { useEmprestimos } from '@/features/ferramentas/hooks/useEmprestimos';
 import { useCustoObra } from '@/features/custos/useCustoObra';
 
 export function ObraDetailPage() {
@@ -20,11 +21,10 @@ export function ObraDetailPage() {
 
   const { obra, loading } = useObra(id);
   const { subs, loading: subsLoading } = useSubempreiteirosComExecutado(id);
-  // Materiais enviados para esta obra — ligação por nome (destino_obra é texto).
-  const { movements, loading: movsLoading } = useMovimentos(
-    obra ? { tipo: 'saida', destino: obra.name } : {}
-  );
+  // Materiais, combustível e ferramentas desta obra — todos ligados por obra_id.
+  const { movements, loading: movsLoading } = useMovimentos(id ? { tipo: 'saida', obraId: id } : {});
   const { entries: fuelEntries, loading: fuelLoading } = useAbastecimentos(id ? { obraId: id } : {});
+  const { loans: tools, loading: toolsLoading } = useEmprestimos(id ? { obraId: id } : {});
 
   const { custo, loading: custoLoading } = useCustoObra(id, obra?.budget);
 
@@ -201,6 +201,40 @@ export function ObraDetailPage() {
             ))}
             {fuelEntries.length > 10 && (
               <p className="px-5 py-2.5 text-xs text-muted-foreground text-center">+ {fuelEntries.length - 10} mais</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Ferramentas ao serviço da obra */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between">
+          <h2 className="font-semibold text-sm flex items-center gap-2"><Wrench className="w-4 h-4" /> Ferramentas</h2>
+          {tools.length > 0 && (
+            <span className="text-xs text-muted-foreground">{tools.filter(t => t.status === 'ativo').length} em obra</span>
+          )}
+        </div>
+        {toolsLoading ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">A carregar…</p>
+        ) : tools.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-muted-foreground text-center">Sem ferramentas entregues a esta obra.</p>
+        ) : (
+          <div className="divide-y divide-border">
+            {tools.slice(0, 10).map(t => (
+              <div key={t.id} className="flex items-center justify-between gap-3 px-5 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{t.toolName} <span className="text-xs text-muted-foreground font-normal">{t.toolCode}</span></p>
+                  <p className="text-xs text-muted-foreground">{t.employeeName} · {t.loanDate.toLocaleDateString('pt-PT')}</p>
+                </div>
+                {t.status === 'ativo' ? (
+                  <span className="text-[11px] font-semibold text-warning whitespace-nowrap">Em obra</span>
+                ) : (
+                  <span className="text-[11px] font-semibold text-success whitespace-nowrap">Devolvida</span>
+                )}
+              </div>
+            ))}
+            {tools.length > 10 && (
+              <p className="px-5 py-2.5 text-xs text-muted-foreground text-center">+ {tools.length - 10} mais</p>
             )}
           </div>
         )}

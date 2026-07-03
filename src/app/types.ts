@@ -83,6 +83,7 @@ export interface ToolLoan {
   employeeName: string;
   employeeDocument?: string;
   destination?: string;
+  obraId?: string;
   loanDate: Date;
   expectedReturnDate?: Date;
   returnDate?: Date;

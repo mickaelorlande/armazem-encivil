@@ -21,6 +21,7 @@ type EmprestimoRow = {
   assinatura_devolucao: string | null
   assinatura_responsavel_entrega: string | null
   assinatura_responsavel_devolucao: string | null
+  obra_id: string | null
   ferramentas: { nome: string; codigo: string } | null
 }
 
@@ -43,6 +44,7 @@ function toLoan(row: EmprestimoRow): ToolLoan {
     returnNotes: row.observacoes_devolucao ?? undefined,
     deliveredBy: row.responsavel_entrega,
     receivedBy: row.responsavel_recebimento ?? undefined,
+    obraId: row.obra_id ?? undefined,
     deliverySignature: row.assinatura_entrega ?? undefined,
     returnSignature: row.assinatura_devolucao ?? undefined,
     deliveredBySignature: row.assinatura_responsavel_entrega ?? undefined,
@@ -55,6 +57,7 @@ export type FiltrosEmprestimos = {
   funcionario?: string
   estado?: LoanStatus
   destino?: string
+  obraId?: string
   dataInicio?: Date
   dataFim?: Date
   limit?: number
@@ -70,6 +73,7 @@ function aplicarFiltros<T>(query: T, filtros: FiltrosEmprestimos) {
   if (filtros.estado)       q = q.eq('estado', filtros.estado)
   if (filtros.funcionario)  q = q.ilike('funcionario_nome', `%${filtros.funcionario}%`)
   if (filtros.destino)      q = q.ilike('destino_obra', `%${filtros.destino}%`)
+  if (filtros.obraId)       q = q.eq('obra_id', filtros.obraId)
   if (filtros.dataInicio)   q = q.gte('data_emprestimo', filtros.dataInicio.toISOString())
   if (filtros.dataFim) {
     const fim = new Date(filtros.dataFim)
@@ -125,6 +129,7 @@ export type RegistarEmprestimoInput = {
   responsibleSignature: string
   employeeDocument?: string
   destination?: string
+  obraId?: string
   expectedReturnDate?: string
   deliveryCondition?: string
   notes?: string
@@ -150,6 +155,7 @@ export async function registarEmprestimo(input: RegistarEmprestimoInput): Promis
     p_data_prevista_devolucao: input.expectedReturnDate,
     p_condicao_entrega: input.deliveryCondition,
     p_observacoes: input.notes,
+    p_obra_id: input.obraId,
   })
   if (error) throw error
 
