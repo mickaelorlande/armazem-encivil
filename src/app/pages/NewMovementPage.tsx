@@ -523,7 +523,7 @@ export function NewMovementPage() {
                   className={inputCls}
                 >
                   <option value="">Selecione a obra</option>
-                  {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                  {obras.filter(o => o.status === 'ativa').map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               )}
               {!outroDestino && obras.length === 0 && (

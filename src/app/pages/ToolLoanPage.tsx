@@ -121,7 +121,7 @@ export function ToolLoanPage() {
             ) : (
               <select value={formData.obraId} onChange={e => setFormData({ ...formData, obraId: e.target.value })} className={inputCls}>
                 <option value="">Sem obra associada</option>
-                {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                {obras.filter(o => o.status === 'ativa').map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
               </select>
             )}
           </div>

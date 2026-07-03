@@ -7,7 +7,7 @@ import {
 import {
   BarChart3, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle,
   AlertTriangle, Printer, ChevronUp, ChevronDown, Minus, X, FileText,
-  Wrench, Boxes, Building2, Wallet,
+  Wrench, Boxes, Building2, Wallet, Fuel, Droplet,
 } from 'lucide-react'
 import { listarMovimentos } from '@/features/movimentos/services/movimentosService'
 import { listarProdutos } from '@/features/produtos/services/produtosService'
@@ -16,8 +16,10 @@ import { listarEmprestimos } from '@/features/ferramentas/services/emprestimosSe
 import { listarObras } from '@/features/obras/services/obrasService'
 import { listarSubempreiteirosComExecutado } from '@/features/subempreiteiros/services/subempreiteirosService'
 import { custosMateriaisCombustivelPorObra } from '@/features/custos/custosService'
+import { listarAbastecimentos } from '@/features/combustivel/services/abastecimentosService'
+import { listarVeiculos } from '@/features/combustivel/services/veiculosService'
 import { getUnitLabel, getToolCategoryLabel } from '../data/mockData'
-import { fmtEuro } from '../lib/format'
+import { fmtEuro, fmtNumber } from '../lib/format'
 import { ToolStatusBadge } from '../components/ToolStatusBadge'
 import type { Movement, Product, Tool, ToolLoan, Obra } from '../types'
 
@@ -1150,10 +1152,190 @@ function ObrasPrintReport({ data, onClose }: { data: ObrasReportData; onClose: (
   )
 }
 
+/* ─── Relatório de Combustível ──────────────────────────────────── */
+
+type VeiculoConsumo = {
+  id: string
+  nome: string
+  codigo: string
+  numAbast: number
+  litros: number
+  custo: number
+  precoMedio: number
+}
+
+type CombustivelReportData = {
+  loading: boolean
+  linhas: VeiculoConsumo[]
+}
+
+function CombustivelReportSection({ loading, linhas }: CombustivelReportData) {
+  const totalCusto = linhas.reduce((s, l) => s + l.custo, 0)
+  const totalLitros = linhas.reduce((s, l) => s + l.litros, 0)
+  const totalAbast = linhas.reduce((s, l) => s + l.numAbast, 0)
+  const precoMedio = totalLitros > 0 ? totalCusto / totalLitros : 0
+
+  return (
+    <div className="space-y-6 pb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <KpiCard label="Total Gasto" value={fmtEuro(totalCusto)} icon={Fuel} iconBg="bg-primary/10" valueColor="text-primary" trend={null} loading={loading} />
+        <KpiCard label="Litros" value={`${fmtNumber(totalLitros)} L`} icon={Droplet} iconBg="bg-primary/10" valueColor="text-foreground" trend={null} loading={loading} />
+        <KpiCard label="Abastecimentos" value={totalAbast} icon={BarChart3} iconBg="bg-success/10" valueColor="text-success" trend={null} loading={loading} />
+        <KpiCard label="Preço Médio/L" value={fmtEuro(precoMedio)} icon={TrendingUp} iconBg="bg-warning/10" valueColor="text-warning" trend={null} loading={loading} />
+      </div>
+
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="px-5 py-4 border-b border-border bg-muted/30">
+          <h2 className="font-semibold text-base">Consumo por Viatura</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Litros, custo e preço médio por viatura/máquina</p>
+        </div>
+        {loading ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+        ) : linhas.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">Sem abastecimentos registados.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  {['Viatura', 'Abast.', 'Litros', 'Custo', '€/L'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {linhas.map(l => (
+                  <tr key={l.id} className="hover:bg-accent/40 transition-colors">
+                    <td className="px-4 py-3 font-medium whitespace-nowrap">{l.nome} <span className="text-xs text-muted-foreground">{l.codigo}</span></td>
+                    <td className="px-4 py-3 text-muted-foreground">{l.numAbast}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{fmtNumber(l.litros)} L</td>
+                    <td className="px-4 py-3 whitespace-nowrap font-semibold">{fmtEuro(l.custo)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtEuro(l.precoMedio)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CombustivelPrintReport({ data, onClose }: { data: CombustivelReportData; onClose: () => void }) {
+  useEffect(() => {
+    const s = document.createElement('style')
+    s.id = 'encivil-print-css-comb'
+    s.textContent = `
+      @media print {
+        body > *:not(#encivil-print-root-comb) { display: none !important; }
+        #encivil-print-root-comb { display: block !important; position: static !important; overflow: visible !important; }
+        #encivil-print-root-comb * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .no-print { display: none !important; }
+        @page { margin: 12mm 15mm; size: A4 portrait; }
+      }
+    `
+    document.head.appendChild(s)
+    return () => { document.getElementById('encivil-print-css-comb')?.remove() }
+  }, [])
+
+  const linhas = data.linhas
+  const totalCusto = linhas.reduce((s, l) => s + l.custo, 0)
+  const totalLitros = linhas.reduce((s, l) => s + l.litros, 0)
+  const precoMedio = totalLitros > 0 ? totalCusto / totalLitros : 0
+  const today = fmt(new Date())
+  const NAVY = '#1e3a8a', SLATE = '#64748b', LIGHT = '#f8fafc', BORDER = '#e2e8f0'
+
+  return createPortal(
+    <div id="encivil-print-root-comb" style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 9999, overflowY: 'auto' }}>
+      <div className="no-print" style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white', borderBottom: `1px solid ${BORDER}`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FileText style={{ width: 16, height: 16, color: NAVY }} />
+          <span style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Pré-visualização · Relatório de Combustível ENCIVIL</span>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: 13, background: 'white', cursor: 'pointer', color: '#374151' }}>
+            <X style={{ width: 14, height: 14 }} /> Fechar
+          </button>
+          <button onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 20px', background: NAVY, color: 'white', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <Printer style={{ width: 14, height: 14 }} /> Imprimir / Salvar PDF
+          </button>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 794, margin: '0 auto', background: 'white', padding: '0 0 40px' }}>
+        <div style={{ background: NAVY, color: 'white', padding: '24px 32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ background: 'white', borderRadius: 10, padding: 6, width: 52, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <img src="/icone_oficial.png" alt="ENCIVIL" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>ENCIVIL</div>
+                <div style={{ fontSize: 13, opacity: 0.85, marginTop: 2 }}>Relatório de Combustível</div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', fontSize: 12, opacity: 0.7 }}>Gerado em {today}</div>
+          </div>
+          <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.2)', display: 'flex', gap: 28, fontSize: 12, opacity: 0.85 }}>
+            <span>Total: <strong>{fmtEuro(totalCusto)}</strong></span>
+            <span>Litros: <strong>{fmtNumber(totalLitros)} L</strong></span>
+            <span>Preço médio: <strong style={{ color: '#fde68a' }}>{fmtEuro(precoMedio)}/L</strong></span>
+          </div>
+        </div>
+
+        <div style={{ padding: '28px 32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div style={{ width: 4, height: 20, background: NAVY, borderRadius: 2 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Consumo por Viatura</span>
+          </div>
+          {linhas.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: SLATE, fontSize: 13, background: LIGHT, borderRadius: 10, border: `1px solid ${BORDER}` }}>Sem abastecimentos.</div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+              <thead>
+                <tr style={{ background: NAVY, color: 'white' }}>
+                  {['Viatura', 'Abast.', 'Litros', 'Custo', '€/L'].map((h, i) => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: i === 0 ? 'left' : 'right', fontWeight: 600, fontSize: 11 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((l, i) => (
+                  <tr key={l.id} style={{ background: i % 2 === 0 ? 'white' : LIGHT }}>
+                    <td style={{ padding: '9px 12px', borderBottom: `1px solid ${BORDER}` }}>{l.nome} ({l.codigo})</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', color: SLATE, borderBottom: `1px solid ${BORDER}` }}>{l.numAbast}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', borderBottom: `1px solid ${BORDER}` }}>{fmtNumber(l.litros)} L</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 700, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.custo)}</td>
+                    <td style={{ padding: '9px 12px', textAlign: 'right', color: SLATE, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.precoMedio)}</td>
+                  </tr>
+                ))}
+                <tr style={{ background: '#eef2ff', fontWeight: 700 }}>
+                  <td style={{ padding: '10px 12px' }}>TOTAL</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>{linhas.reduce((s, l) => s + l.numAbast, 0)}</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>{fmtNumber(totalLitros)} L</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>{fmtEuro(totalCusto)}</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right' }}>{fmtEuro(precoMedio)}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div style={{ borderTop: `3px solid ${NAVY}`, margin: '0 32px', padding: '14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: SLATE }}>
+          <span>Gerado automaticamente pelo ENCIVIL Gestão</span>
+          <span style={{ fontWeight: 600 }}>© 2026 ENCIVIL</span>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 /* ─── Página principal ──────────────────────────────────────────── */
 
 export function ReportsPage() {
-  const [reportType, setReportType] = useState<'stock' | 'ferramentas' | 'obras'>('stock')
+  const [reportType, setReportType] = useState<'stock' | 'ferramentas' | 'obras' | 'combustivel'>('stock')
   const [period, setPeriod]   = useState<Period>('mes')
   const [loading, setLoading] = useState(true)
   const [current,  setCurrent]  = useState<Movement[]>([])
@@ -1172,6 +1354,10 @@ export function ReportsPage() {
   const [obrasLoading, setObrasLoading] = useState(true)
   const [obrasLinhas, setObrasLinhas] = useState<ObraLinha[]>([])
   const [showObrasPrint, setShowObrasPrint] = useState(false)
+
+  const [combLoading, setCombLoading] = useState(true)
+  const [combLinhas, setCombLinhas] = useState<VeiculoConsumo[]>([])
+  const [showCombPrint, setShowCombPrint] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -1237,6 +1423,31 @@ export function ReportsPage() {
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setObrasLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    setCombLoading(true)
+    Promise.all([listarAbastecimentos(), listarVeiculos(false)])
+      .then(([entries, veiculos]) => {
+        if (cancelled) return
+        const acc: Record<string, VeiculoConsumo> = {}
+        veiculos.forEach(v => { acc[v.id] = { id: v.id, nome: v.name, codigo: v.code, numAbast: 0, litros: 0, custo: 0, precoMedio: 0 } })
+        entries.forEach(e => {
+          const row = acc[e.vehicleId] ?? (acc[e.vehicleId] = { id: e.vehicleId, nome: e.vehicleName ?? '—', codigo: e.vehicleCode ?? '', numAbast: 0, litros: 0, custo: 0, precoMedio: 0 })
+          row.numAbast += 1
+          row.litros += e.liters
+          row.custo += e.totalCost
+        })
+        const linhas = Object.values(acc)
+          .map(r => ({ ...r, precoMedio: r.litros > 0 ? r.custo / r.litros : 0 }))
+          .filter(r => r.numAbast > 0)
+          .sort((a, b) => b.custo - a.custo)
+        setCombLinhas(linhas)
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setCombLoading(false) })
     return () => { cancelled = true }
   }, [])
 
@@ -1308,7 +1519,7 @@ export function ReportsPage() {
             <div>
               <h1 className="text-lg md:text-xl font-bold leading-tight">Relatório Executivo</h1>
               <p className="text-white/70 text-sm mt-0.5">
-                {reportType === 'stock' ? 'Análise de armazém' : reportType === 'ferramentas' ? 'Análise de ferramentas' : 'Análise de obras'} · ENCIVIL
+                {reportType === 'stock' ? 'Análise de armazém' : reportType === 'ferramentas' ? 'Análise de ferramentas' : reportType === 'obras' ? 'Análise de obras' : 'Análise de combustível'} · ENCIVIL
               </p>
             </div>
           </div>
@@ -1338,7 +1549,7 @@ export function ReportsPage() {
               </select>
             )}
             <button
-              onClick={() => reportType === 'stock' ? setShowPrint(true) : reportType === 'ferramentas' ? setShowToolsPrint(true) : setShowObrasPrint(true)}
+              onClick={() => reportType === 'stock' ? setShowPrint(true) : reportType === 'ferramentas' ? setShowToolsPrint(true) : reportType === 'obras' ? setShowObrasPrint(true) : setShowCombPrint(true)}
               className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-xl text-sm font-medium transition-colors"
             >
               <Printer className="w-4 h-4" />
@@ -1351,7 +1562,9 @@ export function ReportsPage() {
             ? `${periodLabel} · comparado com ${prevLabel}`
             : reportType === 'ferramentas'
             ? `${getPeriodConfig(toolsPeriod).label} · comparado com ${getPeriodConfig(toolsPeriod).prevLabel}`
-            : 'Situação atual · contratado vs. executado'}
+            : reportType === 'obras'
+            ? 'Situação atual · orçamento vs. custo real'
+            : 'Consumo acumulado por viatura'}
         </p>
       </div>
 
@@ -1381,10 +1594,22 @@ export function ReportsPage() {
         >
           <Building2 className="w-4 h-4" /> Obras
         </button>
+        <button
+          onClick={() => setReportType('combustivel')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            reportType === 'combustivel' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Fuel className="w-4 h-4" /> Combustível
+        </button>
       </div>
 
       {reportType === 'obras' && (
         <ObrasReportSection loading={obrasLoading} linhas={obrasLinhas} />
+      )}
+
+      {reportType === 'combustivel' && (
+        <CombustivelReportSection loading={combLoading} linhas={combLinhas} />
       )}
 
       {reportType === 'ferramentas' && (
@@ -1556,6 +1781,13 @@ export function ReportsPage() {
         <ObrasPrintReport
           data={{ loading: obrasLoading, linhas: obrasLinhas }}
           onClose={() => setShowObrasPrint(false)}
+        />
+      )}
+
+      {showCombPrint && (
+        <CombustivelPrintReport
+          data={{ loading: combLoading, linhas: combLinhas }}
+          onClose={() => setShowCombPrint(false)}
         />
       )}
     </div>

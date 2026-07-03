@@ -117,7 +117,7 @@ export function AbastecimentoFormPage() {
             <label className="block text-sm font-medium mb-2">Obra <span className="text-muted-foreground font-normal text-xs">(opcional — para imputar o custo)</span></label>
             <select value={form.obraId} onChange={e => set({ obraId: e.target.value })} className={inputCls}>
               <option value="">Sem obra associada</option>
-              {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              {obras.filter(o => o.status === 'ativa' || o.id === form.obraId).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">

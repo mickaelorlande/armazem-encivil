@@ -139,7 +139,7 @@ export function SubempreiteiroFormPage() {
             <label className="block text-sm font-medium mb-2">Obra <span className="text-destructive">*</span></label>
             <select value={form.obraId} onChange={e => set({ obraId: e.target.value })} className={inputCls} required disabled={obrasLoading}>
               <option value="">{obrasLoading ? 'A carregar…' : 'Selecione a obra'}</option>
-              {obras.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              {obras.filter(o => o.status === 'ativa' || o.id === form.obraId).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
             {!obrasLoading && obras.length === 0 && (
               <p className="text-xs text-warning mt-1.5">Ainda não há obras. Crie uma obra primeiro.</p>
