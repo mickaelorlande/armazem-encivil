@@ -991,10 +991,47 @@ function ObraMini({ label, value, color }: { label: string; value: string; color
   )
 }
 
+// ── Motor de análise executiva das obras ────────────────────────
+const RISCO_LIMIAR = 0.85 // custo já >= 85% do orçamento => risco de estouro
+
+function margemPctDe(l: ObraLinha): number | null {
+  if (l.orcamento == null || l.orcamento <= 0 || l.margem == null) return null
+  return (l.margem / l.orcamento) * 100
+}
+
+// Cor/saúde: verde margem>=15%, âmbar 0–15%, vermelho negativa.
+function saudeObra(l: ObraLinha): { color: string; dot: string } {
+  const pct = margemPctDe(l)
+  if (pct == null) return { color: 'text-muted-foreground', dot: 'bg-muted-foreground/40' }
+  if (pct < 0) return { color: 'text-destructive', dot: 'bg-destructive' }
+  if (pct < 15) return { color: 'text-warning', dot: 'bg-warning' }
+  return { color: 'text-success', dot: 'bg-success' }
+}
+
+function analiseObras(linhas: ObraLinha[]) {
+  const comOrc = linhas.filter(l => (l.orcamento ?? 0) > 0)
+  const totalOrcamento = linhas.reduce((s, l) => s + (l.orcamento ?? 0), 0)
+  const totalCusto = linhas.reduce((s, l) => s + l.custoTotal, 0)
+  const totalMargem = totalOrcamento - totalCusto
+  const margemPct = totalOrcamento > 0 ? (totalMargem / totalOrcamento) * 100 : null
+
+  const noVermelho = comOrc.filter(l => (l.margem ?? 0) < 0)
+  const emRisco = comOrc.filter(l => (l.margem ?? 0) >= 0 && l.custoTotal / l.orcamento! >= RISCO_LIMIAR)
+
+  const rank = comOrc.map(l => ({ l, pct: margemPctDe(l)! })).sort((a, b) => b.pct - a.pct)
+  const melhor = rank[0]
+  const pior = rank.length > 1 ? rank[rank.length - 1] : undefined
+
+  return { comOrc, totalOrcamento, totalCusto, totalMargem, margemPct, noVermelho, emRisco, melhor, pior }
+}
+
+const fmtPct = (v: number | null) => (v == null ? '—' : `${v >= 0 ? '' : ''}${v.toFixed(1)}%`)
+
 function ObrasReportSection({ loading, linhas }: ObrasReportData) {
   const totalOrcamento = linhas.reduce((s, l) => s + (l.orcamento ?? 0), 0)
   const totalCusto     = linhas.reduce((s, l) => s + l.custoTotal, 0)
   const totalMargem    = totalOrcamento - totalCusto
+  const a = analiseObras(linhas)
 
   const chartData = linhas
     .filter(l => (l.orcamento ?? 0) > 0 || l.custoTotal > 0)
@@ -1013,6 +1050,56 @@ function ObrasReportSection({ loading, linhas }: ObrasReportData) {
         <KpiCard label="Custo Real" value={fmtEuro(totalCusto)} icon={TrendingDown} iconBg="bg-destructive/10" valueColor="text-destructive" trend={null} loading={loading} />
         <KpiCard label="Margem" value={fmtEuro(totalMargem)} icon={TrendingUp} iconBg={totalMargem >= 0 ? 'bg-success/10' : 'bg-destructive/10'} valueColor={totalMargem >= 0 ? 'text-success' : 'text-destructive'} trend={null} loading={loading} />
       </div>
+
+      {/* Análise executiva — insights, não só números */}
+      {!loading && (
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <h2 className="font-semibold text-base mb-3 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-primary" /> Análise Executiva</h2>
+          {a.comOrc.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Defina o <strong>orçamento</strong> das obras (em Editar) para ver a análise de margem e risco.</p>
+          ) : (
+            <ul className="space-y-2.5 text-sm">
+              <li className="flex items-start gap-2.5">
+                <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${a.totalMargem >= 0 ? 'bg-success' : 'bg-destructive'}`} />
+                <span>
+                  Margem global de <strong className={a.totalMargem >= 0 ? 'text-success' : 'text-destructive'}>{fmtEuro(a.totalMargem)}</strong>
+                  {a.margemPct != null && <> (<strong>{fmtPct(a.margemPct)}</strong> do orçamento)</>} em {a.comOrc.length} obra{a.comOrc.length !== 1 ? 's' : ''} com orçamento.
+                </span>
+              </li>
+              {a.noVermelho.length > 0 && (
+                <li className="flex items-start gap-2.5">
+                  <TrendingDown className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="text-destructive">{a.noVermelho.length} obra{a.noVermelho.length !== 1 ? 's' : ''} a dar prejuízo</strong> (custo acima do orçamento): {a.noVermelho.map(l => l.obra.name).join(', ')}.
+                  </span>
+                </li>
+              )}
+              {a.emRisco.length > 0 && (
+                <li className="flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="text-warning">{a.emRisco.length} obra{a.emRisco.length !== 1 ? 's' : ''} em risco de estouro</strong> (custo já ≥ 85% do orçamento): {a.emRisco.map(l => l.obra.name).join(', ')}.
+                  </span>
+                </li>
+              )}
+              {a.melhor && (
+                <li className="flex items-start gap-2.5">
+                  <TrendingUp className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                  <span>
+                    Melhor margem: <strong>{a.melhor.l.obra.name}</strong> ({fmtPct(a.melhor.pct)}){a.pior && <> · Pior: <strong>{a.pior.l.obra.name}</strong> ({fmtPct(a.pior.pct)})</>}.
+                  </span>
+                </li>
+              )}
+              {a.noVermelho.length === 0 && a.emRisco.length === 0 && (
+                <li className="flex items-start gap-2.5">
+                  <span className="mt-1.5 w-2 h-2 rounded-full shrink-0 bg-success" />
+                  <span>Todas as obras com orçamento estão dentro do previsto. 🎉</span>
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Gráfico Orçamento vs. Custo Real por obra */}
       {chartData.length > 0 && (
@@ -1045,12 +1132,13 @@ function ObrasReportSection({ loading, linhas }: ObrasReportData) {
               <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${saudeObra(l).dot}`} title="Saúde da margem" />
                     <h3 className="font-semibold text-sm truncate">{l.obra.name}</h3>
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
                       l.obra.status === 'concluida' ? 'bg-muted text-muted-foreground' : 'bg-success/10 text-success'
                     }`}>{l.obra.status === 'concluida' ? 'Concluída' : 'Ativa'}</span>
                   </div>
-                  {l.obra.client && <p className="text-xs text-muted-foreground truncate">{l.obra.client}</p>}
+                  {l.obra.client && <p className="text-xs text-muted-foreground truncate ml-4">{l.obra.client}</p>}
                 </div>
               </div>
 
@@ -1058,7 +1146,11 @@ function ObrasReportSection({ loading, linhas }: ObrasReportData) {
               <div className="grid grid-cols-3 gap-2 px-5 py-3 border-b border-border">
                 <ObraMini label="Orçamento" value={l.orcamento != null ? fmtEuro(l.orcamento) : '—'} color="text-foreground" />
                 <ObraMini label="Custo Real" value={fmtEuro(l.custoTotal)} color="text-destructive" />
-                <ObraMini label="Margem" value={l.margem != null ? fmtEuro(l.margem) : '—'} color={l.margem == null ? 'text-muted-foreground' : l.margem >= 0 ? 'text-success' : 'text-destructive'} />
+                <ObraMini
+                  label={margemPctDe(l) != null ? `Margem (${fmtPct(margemPctDe(l))})` : 'Margem'}
+                  value={l.margem != null ? fmtEuro(l.margem) : '—'}
+                  color={saudeObra(l).color}
+                />
               </div>
 
               {/* Repartição */}
@@ -1141,9 +1233,10 @@ function ObrasPrintReport({ data, onClose }: { data: ObrasReportData; onClose: (
   const totalCusto     = linhas.reduce((s, l) => s + l.custoTotal, 0)
   const totalMargem    = totalOrcamento - totalCusto
   const comSubs = linhas.filter(l => l.subs.length > 0)
+  const a = analiseObras(linhas)
   const today = fmt(new Date())
 
-  const NAVY = '#1e3a8a', GREEN = '#16a34a', SLATE = '#64748b', LIGHT = '#f8fafc', BORDER = '#e2e8f0'
+  const NAVY = '#1e3a8a', GREEN = '#16a34a', RED = '#dc2626', AMBER = '#b45309', SLATE = '#64748b', LIGHT = '#f8fafc', BORDER = '#e2e8f0'
 
   return createPortal(
     <div id="encivil-print-root-obras" style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 9999, overflowY: 'auto' }}>
@@ -1179,11 +1272,36 @@ function ObrasPrintReport({ data, onClose }: { data: ObrasReportData; onClose: (
           <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,0.2)', display: 'flex', gap: 28, fontSize: 12, opacity: 0.85 }}>
             <span>Orçamento: <strong>{fmtEuro(totalOrcamento)}</strong></span>
             <span>Custo real: <strong style={{ color: '#fca5a5' }}>{fmtEuro(totalCusto)}</strong></span>
-            <span>Margem: <strong style={{ color: totalMargem >= 0 ? '#86efac' : '#fca5a5' }}>{fmtEuro(totalMargem)}</strong></span>
+            <span>Margem: <strong style={{ color: totalMargem >= 0 ? '#86efac' : '#fca5a5' }}>{fmtEuro(totalMargem)}{a.margemPct != null ? ` (${fmtPct(a.margemPct)})` : ''}</strong></span>
           </div>
         </div>
 
-        <div style={{ padding: '28px 32px' }}>
+        {/* Análise executiva */}
+        {a.comOrc.length > 0 && (
+          <div style={{ padding: '24px 32px 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 4, height: 20, background: NAVY, borderRadius: 2 }} />
+              <span style={{ fontWeight: 700, fontSize: 13, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Análise Executiva</span>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: '#374151', lineHeight: 1.7 }}>
+              <li>Margem global de <strong style={{ color: a.totalMargem >= 0 ? GREEN : RED }}>{fmtEuro(a.totalMargem)}{a.margemPct != null ? ` (${fmtPct(a.margemPct)})` : ''}</strong> em {a.comOrc.length} obra(s) com orçamento.</li>
+              {a.noVermelho.length > 0 && (
+                <li style={{ color: RED }}><strong>{a.noVermelho.length} obra(s) a dar prejuízo:</strong> {a.noVermelho.map(l => l.obra.name).join(', ')}.</li>
+              )}
+              {a.emRisco.length > 0 && (
+                <li style={{ color: AMBER }}><strong>{a.emRisco.length} obra(s) em risco de estouro</strong> (custo ≥ 85% do orçamento): {a.emRisco.map(l => l.obra.name).join(', ')}.</li>
+              )}
+              {a.melhor && (
+                <li>Melhor margem: <strong>{a.melhor.l.obra.name}</strong> ({fmtPct(a.melhor.pct)}){a.pior ? <> · Pior: <strong>{a.pior.l.obra.name}</strong> ({fmtPct(a.pior.pct)})</> : null}.</li>
+              )}
+              {a.noVermelho.length === 0 && a.emRisco.length === 0 && (
+                <li style={{ color: GREEN }}>Todas as obras com orçamento estão dentro do previsto.</li>
+              )}
+            </ul>
+          </div>
+        )}
+
+        <div style={{ padding: '20px 32px 28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <div style={{ width: 4, height: 20, background: NAVY, borderRadius: 2 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Custos por Obra</span>
