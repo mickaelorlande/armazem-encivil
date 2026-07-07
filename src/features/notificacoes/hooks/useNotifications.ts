@@ -33,11 +33,11 @@ export function useNotifications() {
         .not('data_prevista_devolucao', 'is', null)
         .lt('data_prevista_devolucao', today),
       podeValidar
-        ? supabase.from('subempreiteiros').select('id', { count: 'exact', head: true }).eq('estado', 'rascunho')
-        : Promise.resolve({ count: 0 }),
+        ? supabase.from('subempreiteiros').select('id, nome').eq('estado', 'rascunho')
+        : Promise.resolve({ data: [] }),
       podeValidar
-        ? supabase.from('autos_medicao').select('id', { count: 'exact', head: true }).eq('estado', 'rascunho')
-        : Promise.resolve({ count: 0 }),
+        ? supabase.from('autos_medicao').select('id, numero, subempreiteiros(nome)').eq('estado', 'rascunho')
+        : Promise.resolve({ data: [] }),
     ])
 
     const notifs: AppNotification[] = []
@@ -72,21 +72,31 @@ export function useNotifications() {
       })
     })
 
-    // 3. Validações pendentes (só admin)
-    const porValidar = (subsPend.count ?? 0) + (autosPend.count ?? 0)
-    if (porValidar > 0) {
+    // 3. Validações pendentes (só admin) — uma notificação por item,
+    //    cada uma a apontar para o ecrã exato onde se valida.
+    type SubPendRow = { id: string; nome: string }
+    ;((subsPend.data ?? []) as SubPendRow[]).forEach(s => {
       notifs.push({
-        id: 'pending-validation',
+        id: `sub-pend-${s.id}`,
         kind: 'pending',
-        title: `${porValidar} ${porValidar === 1 ? 'item aguarda' : 'itens aguardam'} validação`,
-        subtitle: [
-          (subsPend.count ?? 0) > 0 ? `${subsPend.count} contrato${subsPend.count !== 1 ? 's' : ''}` : '',
-          (autosPend.count ?? 0) > 0 ? `${autosPend.count} auto${autosPend.count !== 1 ? 's' : ''}` : '',
-        ].filter(Boolean).join(' · '),
+        title: 'Contrato por validar',
+        subtitle: s.nome,
         severity: 'info',
-        link: '/subempreiteiros',
+        link: `/subempreiteiros/${s.id}`,
       })
-    }
+    })
+
+    type AutoPendRow = { id: string; numero: number; subempreiteiros: { nome: string } | null }
+    ;((autosPend.data ?? []) as AutoPendRow[]).forEach(a => {
+      notifs.push({
+        id: `auto-pend-${a.id}`,
+        kind: 'pending',
+        title: 'Auto de medição por validar',
+        subtitle: `Auto Nº ${a.numero}${a.subempreiteiros?.nome ? ` · ${a.subempreiteiros.nome}` : ''}`,
+        severity: 'info',
+        link: `/autos/${a.id}`,
+      })
+    })
 
     setItems(notifs)
     setLoading(false)
