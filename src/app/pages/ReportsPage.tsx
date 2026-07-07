@@ -7,14 +7,14 @@ import {
 import {
   BarChart3, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle,
   AlertTriangle, Printer, ChevronUp, ChevronDown, Minus, X, FileText,
-  Wrench, Boxes, Building2, Wallet, Fuel, Droplet,
+  Wrench, Boxes, Building2, Wallet, Fuel, Droplet, HardHat,
 } from 'lucide-react'
 import { listarMovimentos } from '@/features/movimentos/services/movimentosService'
 import { listarProdutos } from '@/features/produtos/services/produtosService'
 import { listarFerramentas } from '@/features/ferramentas/services/ferramentasService'
 import { listarEmprestimos } from '@/features/ferramentas/services/emprestimosService'
 import { listarObras } from '@/features/obras/services/obrasService'
-import { listarSubempreiteirosComExecutado } from '@/features/subempreiteiros/services/subempreiteirosService'
+import { listarSubempreiteirosComExecutado, type SubcontractorComExecutado } from '@/features/subempreiteiros/services/subempreiteirosService'
 import { custosMateriaisCombustivelPorObra } from '@/features/custos/custosService'
 import { listarAbastecimentos } from '@/features/combustivel/services/abastecimentosService'
 import { listarVeiculos } from '@/features/combustivel/services/veiculosService'
@@ -967,11 +967,12 @@ function ToolsPrintReport({ data, onClose }: { data: ToolsReportData; onClose: (
 
 type ObraLinha = {
   obra: Obra
-  numSubs: number
+  subs: SubcontractorComExecutado[]
+  contratado: number      // soma do valor acordado dos subempreiteiros
   materiais: number
-  subempreiteiros: number
+  subExecutado: number    // soma dos autos validados dos subempreiteiros
   combustivel: number
-  custoTotal: number
+  custoTotal: number      // materiais + subExecutado + combustivel
   orcamento?: number
   margem?: number
 }
@@ -981,59 +982,139 @@ type ObrasReportData = {
   linhas: ObraLinha[]
 }
 
+function ObraMini({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="text-center">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className={`text-sm md:text-base font-bold mt-0.5 ${color}`}>{value}</p>
+    </div>
+  )
+}
+
 function ObrasReportSection({ loading, linhas }: ObrasReportData) {
   const totalOrcamento = linhas.reduce((s, l) => s + (l.orcamento ?? 0), 0)
   const totalCusto     = linhas.reduce((s, l) => s + l.custoTotal, 0)
   const totalMargem    = totalOrcamento - totalCusto
-  const comAtividade   = linhas.filter(l => l.custoTotal > 0 || (l.orcamento ?? 0) > 0)
+
+  const chartData = linhas
+    .filter(l => (l.orcamento ?? 0) > 0 || l.custoTotal > 0)
+    .slice(0, 8)
+    .map(l => ({
+      name: l.obra.name.length > 16 ? l.obra.name.slice(0, 15) + '…' : l.obra.name,
+      'Orçamento': l.orcamento ?? 0,
+      'Custo Real': l.custoTotal,
+    }))
 
   return (
     <div className="space-y-6 pb-8">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <KpiCard label="Obras" value={comAtividade.length} icon={Building2} iconBg="bg-primary/10" valueColor="text-primary" trend={null} loading={loading} />
+        <KpiCard label="Obras" value={linhas.length} icon={Building2} iconBg="bg-primary/10" valueColor="text-primary" trend={null} loading={loading} />
         <KpiCard label="Orçamento" value={fmtEuro(totalOrcamento)} icon={Wallet} iconBg="bg-primary/10" valueColor="text-foreground" trend={null} loading={loading} />
         <KpiCard label="Custo Real" value={fmtEuro(totalCusto)} icon={TrendingDown} iconBg="bg-destructive/10" valueColor="text-destructive" trend={null} loading={loading} />
         <KpiCard label="Margem" value={fmtEuro(totalMargem)} icon={TrendingUp} iconBg={totalMargem >= 0 ? 'bg-success/10' : 'bg-destructive/10'} valueColor={totalMargem >= 0 ? 'text-success' : 'text-destructive'} trend={null} loading={loading} />
       </div>
 
-      <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        <div className="px-5 py-4 border-b border-border bg-muted/30">
-          <h2 className="font-semibold text-base">Custos por Obra</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Orçamento vs. custo real (materiais + subempreiteiros + combustível) = margem</p>
+      {/* Gráfico Orçamento vs. Custo Real por obra */}
+      {chartData.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border p-5">
+          <h2 className="font-semibold text-base mb-4">Orçamento vs. Custo Real</h2>
+          <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 56)}>
+            <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+              <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `${Math.round(Number(v) / 1000)}k`} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <Tooltip formatter={(v) => fmtEuro(Number(v))} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} cursor={{ fill: '#f1f5f9' }} />
+              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              <Bar dataKey="Orçamento" fill="#1e3a8a" radius={[0, 4, 4, 0]} barSize={11} />
+              <Bar dataKey="Custo Real" fill="#dc2626" radius={[0, 4, 4, 0]} barSize={11} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-        {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
-        ) : comAtividade.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Ainda não há custos nem orçamentos registados nas obras.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  {['Obra', 'Materiais', 'Subs', 'Combustível', 'Custo Real', 'Orçamento', 'Margem'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {comAtividade.map(l => (
-                  <tr key={l.obra.id} className="hover:bg-accent/40 transition-colors">
-                    <td className="px-4 py-3 font-medium whitespace-nowrap">{l.obra.name}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtEuro(l.materiais)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtEuro(l.subempreiteiros)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtEuro(l.combustivel)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap font-semibold text-destructive">{fmtEuro(l.custoTotal)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{l.orcamento != null ? fmtEuro(l.orcamento) : '—'}</td>
-                    <td className={`px-4 py-3 whitespace-nowrap font-semibold ${l.margem == null ? 'text-muted-foreground' : l.margem >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {l.margem != null ? fmtEuro(l.margem) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      )}
+
+      {/* Uma ficha por obra — com o detalhe dos subempreiteiros */}
+      {loading ? (
+        <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+      ) : linhas.length === 0 ? (
+        <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">Ainda não há obras.</div>
+      ) : (
+        <div className="space-y-4">
+          {linhas.map(l => (
+            <div key={l.obra.id} className="bg-card rounded-2xl border border-border overflow-hidden">
+              {/* Cabeçalho da obra */}
+              <div className="px-5 py-3.5 border-b border-border bg-muted/30 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-sm truncate">{l.obra.name}</h3>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0 ${
+                      l.obra.status === 'concluida' ? 'bg-muted text-muted-foreground' : 'bg-success/10 text-success'
+                    }`}>{l.obra.status === 'concluida' ? 'Concluída' : 'Ativa'}</span>
+                  </div>
+                  {l.obra.client && <p className="text-xs text-muted-foreground truncate">{l.obra.client}</p>}
+                </div>
+              </div>
+
+              {/* P&L da obra */}
+              <div className="grid grid-cols-3 gap-2 px-5 py-3 border-b border-border">
+                <ObraMini label="Orçamento" value={l.orcamento != null ? fmtEuro(l.orcamento) : '—'} color="text-foreground" />
+                <ObraMini label="Custo Real" value={fmtEuro(l.custoTotal)} color="text-destructive" />
+                <ObraMini label="Margem" value={l.margem != null ? fmtEuro(l.margem) : '—'} color={l.margem == null ? 'text-muted-foreground' : l.margem >= 0 ? 'text-success' : 'text-destructive'} />
+              </div>
+
+              {/* Repartição */}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 px-5 py-2 text-xs text-muted-foreground border-b border-border">
+                <span>Materiais: <strong className="text-foreground">{fmtEuro(l.materiais)}</strong></span>
+                <span>Subempreiteiros: <strong className="text-foreground">{fmtEuro(l.subExecutado)}</strong></span>
+                <span>Combustível: <strong className="text-foreground">{fmtEuro(l.combustivel)}</strong></span>
+              </div>
+
+              {/* Subempreiteiros da obra — a relação que faltava */}
+              <div className="px-5 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                    <HardHat className="w-3.5 h-3.5" /> Subempreiteiros
+                  </h4>
+                  {l.subs.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      Contratado <strong className="text-foreground">{fmtEuro(l.contratado)}</strong> · Falta <strong className="text-foreground">{fmtEuro(l.contratado - l.subExecutado)}</strong>
+                    </span>
+                  )}
+                </div>
+                {l.subs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-1">Sem subempreiteiros nesta obra.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-muted-foreground">
+                          {['Subempreiteiro', 'Contratado', 'Executado', 'Falta', ''].map(h => (
+                            <th key={h} className="px-2 py-1.5 text-left font-medium whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {l.subs.map(s => (
+                          <tr key={s.id}>
+                            <td className="px-2 py-1.5 font-medium">{s.name}</td>
+                            <td className="px-2 py-1.5 whitespace-nowrap">{fmtEuro(s.agreedValue)}</td>
+                            <td className="px-2 py-1.5 whitespace-nowrap text-success">{fmtEuro(s.executed)}</td>
+                            <td className="px-2 py-1.5 whitespace-nowrap font-semibold">{fmtEuro(s.agreedValue - s.executed)}</td>
+                            <td className="px-2 py-1.5 whitespace-nowrap">
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${s.status === 'validado' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                                {s.status === 'validado' ? 'Validado' : 'Rascunho'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1055,10 +1136,11 @@ function ObrasPrintReport({ data, onClose }: { data: ObrasReportData; onClose: (
     return () => { document.getElementById('encivil-print-css-obras')?.remove() }
   }, [])
 
-  const linhas = data.linhas.filter(l => l.custoTotal > 0 || (l.orcamento ?? 0) > 0)
+  const linhas = data.linhas
   const totalOrcamento = linhas.reduce((s, l) => s + (l.orcamento ?? 0), 0)
   const totalCusto     = linhas.reduce((s, l) => s + l.custoTotal, 0)
   const totalMargem    = totalOrcamento - totalCusto
+  const comSubs = linhas.filter(l => l.subs.length > 0)
   const today = fmt(new Date())
 
   const NAVY = '#1e3a8a', GREEN = '#16a34a', SLATE = '#64748b', LIGHT = '#f8fafc', BORDER = '#e2e8f0'
@@ -1108,7 +1190,7 @@ function ObrasPrintReport({ data, onClose }: { data: ObrasReportData; onClose: (
           </div>
           {linhas.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: SLATE, fontSize: 13, background: LIGHT, borderRadius: 10, border: `1px solid ${BORDER}` }}>
-              Sem subempreiteiros contratados.
+              Ainda não há obras.
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -1124,7 +1206,7 @@ function ObrasPrintReport({ data, onClose }: { data: ObrasReportData; onClose: (
                   <tr key={l.obra.id} style={{ background: i % 2 === 0 ? 'white' : LIGHT }}>
                     <td style={{ padding: '8px 10px', borderBottom: `1px solid ${BORDER}` }}>{l.obra.name}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', color: SLATE, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.materiais)}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', color: SLATE, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.subempreiteiros)}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', color: SLATE, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.subExecutado)}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', color: SLATE, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.combustivel)}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(l.custoTotal)}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'right', borderBottom: `1px solid ${BORDER}` }}>{l.orcamento != null ? fmtEuro(l.orcamento) : '—'}</td>
@@ -1141,6 +1223,46 @@ function ObrasPrintReport({ data, onClose }: { data: ObrasReportData; onClose: (
             </table>
           )}
         </div>
+
+        {/* Subempreiteiros por Obra */}
+        {comSubs.length > 0 && (
+          <div style={{ padding: '0 32px 28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 4, height: 20, background: NAVY, borderRadius: 2 }} />
+              <span style={{ fontWeight: 700, fontSize: 13, color: NAVY, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subempreiteiros por Obra</span>
+            </div>
+            {comSubs.map(l => (
+              <div key={l.obra.id} style={{ marginBottom: 18, breakInside: 'avoid' }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                  {l.obra.name}
+                  <span style={{ fontWeight: 500, color: SLATE }}>
+                    {'  '}· Contratado {fmtEuro(l.contratado)} · Executado {fmtEuro(l.subExecutado)} · Falta {fmtEuro(l.contratado - l.subExecutado)}
+                  </span>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                  <thead>
+                    <tr style={{ background: LIGHT, color: SLATE }}>
+                      {['Subempreiteiro', 'Estado', 'Contratado', 'Executado', 'Falta'].map((h, i) => (
+                        <th key={h} style={{ padding: '6px 10px', textAlign: i <= 1 ? 'left' : 'right', fontWeight: 600, fontSize: 10, borderBottom: `1px solid ${BORDER}` }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {l.subs.map(s => (
+                      <tr key={s.id}>
+                        <td style={{ padding: '6px 10px', borderBottom: `1px solid ${BORDER}` }}>{s.name}</td>
+                        <td style={{ padding: '6px 10px', borderBottom: `1px solid ${BORDER}`, color: s.status === 'validado' ? GREEN : '#b45309' }}>{s.status === 'validado' ? 'Validado' : 'Rascunho'}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'right', borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(s.agreedValue)}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'right', color: GREEN, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(s.executed)}</td>
+                        <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 700, borderBottom: `1px solid ${BORDER}` }}>{fmtEuro(s.agreedValue - s.executed)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={{ borderTop: `3px solid ${NAVY}`, margin: '0 32px', padding: '14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: SLATE }}>
           <span>Gerado automaticamente pelo ENCIVIL Gestão</span>
@@ -1402,23 +1524,32 @@ export function ReportsPage() {
     Promise.all([listarObras(false), listarSubempreiteirosComExecutado(), custosMateriaisCombustivelPorObra()])
       .then(([obras, subs, matComb]) => {
         if (cancelled) return
-        const linhas: ObraLinha[] = obras.map(obra => {
-          const daObra = subs.filter(s => s.obraId === obra.id)
-          const subempreiteiros = daObra.reduce((sum, s) => sum + s.executed, 0)
-          const parcial = matComb[obra.id] ?? { materiais: 0, combustivel: 0 }
-          const custoTotal = parcial.materiais + subempreiteiros + parcial.combustivel
-          const orcamento = obra.budget
-          return {
-            obra,
-            numSubs: daObra.length,
-            materiais: parcial.materiais,
-            subempreiteiros,
-            combustivel: parcial.combustivel,
-            custoTotal,
-            orcamento,
-            margem: orcamento != null ? orcamento - custoTotal : undefined,
-          }
-        }).sort((a, b) => b.custoTotal - a.custoTotal)
+        const linhas: ObraLinha[] = obras
+          .filter(obra => obra.active) // portefólio: todas as não-arquivadas (ativas + concluídas)
+          .map(obra => {
+            const daObra = subs.filter(s => s.obraId === obra.id)
+            const contratado = daObra.reduce((sum, s) => sum + s.agreedValue, 0)
+            const subExecutado = daObra.reduce((sum, s) => sum + s.executed, 0)
+            const parcial = matComb[obra.id] ?? { materiais: 0, combustivel: 0 }
+            const custoTotal = parcial.materiais + subExecutado + parcial.combustivel
+            const orcamento = obra.budget
+            return {
+              obra,
+              subs: daObra,
+              contratado,
+              materiais: parcial.materiais,
+              subExecutado,
+              combustivel: parcial.combustivel,
+              custoTotal,
+              orcamento,
+              margem: orcamento != null ? orcamento - custoTotal : undefined,
+            }
+          })
+          // ativas primeiro, depois por maior custo
+          .sort((a, b) => {
+            if (a.obra.status !== b.obra.status) return a.obra.status === 'ativa' ? -1 : 1
+            return b.custoTotal - a.custoTotal
+          })
         setObrasLinhas(linhas)
       })
       .catch(() => {})
