@@ -156,20 +156,12 @@ export async function registarEmprestimo(input: RegistarEmprestimoInput): Promis
     p_condicao_entrega: input.deliveryCondition,
     p_observacoes: input.notes,
     p_obra_id: input.obraId,
+    p_assinatura_entrega: input.signature,
+    p_assinatura_responsavel_ent: input.responsibleSignature,
   })
   if (error) throw error
 
-  const loanId = (data as unknown as EmprestimoRow).id
-  const { error: sigError } = await supabase
-    .from('emprestimos_ferramentas')
-    .update({
-      assinatura_entrega: input.signature,
-      assinatura_responsavel_entrega: input.responsibleSignature,
-    })
-    .eq('id', loanId)
-  if (sigError) throw sigError
-
-  return buscarEmprestimoComFerramenta(loanId)
+  return buscarEmprestimoComFerramenta((data as unknown as EmprestimoRow).id)
 }
 
 export type RegistarDevolucaoInput = {
@@ -187,18 +179,10 @@ export async function registarDevolucao(input: RegistarDevolucaoInput): Promise<
     p_condicao_devolucao: input.returnCondition,
     p_responsavel_recebimento: input.receivedBy,
     p_observacoes_devolucao: input.returnNotes,
+    p_assinatura_devolucao: input.signature,
+    p_assinatura_responsavel_dev: input.responsibleSignature,
   })
   if (error) throw error
 
-  const loanId = (data as unknown as EmprestimoRow).id
-  const { error: sigError } = await supabase
-    .from('emprestimos_ferramentas')
-    .update({
-      assinatura_devolucao: input.signature,
-      assinatura_responsavel_devolucao: input.responsibleSignature,
-    })
-    .eq('id', loanId)
-  if (sigError) throw sigError
-
-  return buscarEmprestimoComFerramenta(loanId)
+  return buscarEmprestimoComFerramenta((data as unknown as EmprestimoRow).id)
 }
