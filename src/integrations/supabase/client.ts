@@ -10,8 +10,11 @@ const PROD_KEY = 'sb_publishable_b2Zjbv0hhxxORNxjemsGZA_bMtFaDJa'
 const envUrl = (import.meta.env.VITE_SUPABASE_URL ?? '').trim()
 const envKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '').trim()
 
-const supabaseUrl = /^https:\/\/[a-z]+\.supabase\.co$/.test(envUrl) ? envUrl : PROD_URL
-const supabaseKey = /^sb_publishable_[A-Za-z0-9_-]+$/.test(envKey) ? envKey : PROD_KEY
+const urlValid = /^https:\/\/[a-z0-9]+\.supabase\.co$/.test(envUrl)
+const keyValid = /^sb_publishable_[A-Za-z0-9_-]+$/.test(envKey)
+if (!urlValid || !keyValid) console.warn('[supabase] env vars ausentes ou inválidas — a usar credenciais de produção embutidas')
+const supabaseUrl = urlValid ? envUrl : PROD_URL
+const supabaseKey = keyValid ? envKey : PROD_KEY
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
   auth: {

@@ -49,7 +49,7 @@ export function ToolsPage() {
   const [restoreId, setRestoreId] = useState<string | null>(null);
 
   const { tools, loading, reload } = useFerramentas();
-  const { tools: archived, loading: loadingArchived, reload: reloadArchived } = useFerramentasArquivadas();
+  const { tools: archived, loading: loadingArchived, error: archivedError, reload: reloadArchived } = useFerramentasArquivadas();
   const { restaurar, loading: restoring } = useRestaurarFerramenta();
   const { config } = useConfiguracoes();
 
@@ -405,6 +405,11 @@ export function ToolsPage() {
         {tab === 'arquivadas' && (
           loadingArchived ? (
             <div className="p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+          ) : archivedError ? (
+            <div className="p-8 text-center">
+              <p className="text-sm text-destructive font-medium mb-3">Erro ao carregar ferramentas arquivadas.</p>
+              <button onClick={reloadArchived} className="text-sm text-primary font-semibold hover:underline">Tentar novamente</button>
+            </div>
           ) : filteredArchived.length === 0 ? (
             <EmptyState icon={Archive} title="Nenhuma ferramenta arquivada" description="Ferramentas arquivadas aparecem aqui." />
           ) : (

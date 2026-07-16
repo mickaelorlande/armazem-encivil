@@ -13,10 +13,25 @@ function uuid(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+function isValidItem(item: unknown): item is PendingMovimento {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return false
+  const i = item as Record<string, unknown>
+  return (
+    typeof i.queueId === 'string' && i.queueId.length > 0 &&
+    typeof i.produtoId === 'string' && i.produtoId.length > 0 &&
+    typeof i.tipo === 'string' && i.tipo.length > 0 &&
+    typeof i.quantidade === 'number' && i.quantidade > 0 &&
+    typeof i.responsavel === 'string' && i.responsavel.length > 0
+  )
+}
+
 function readQueue(): PendingMovimento[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(isValidItem)
   } catch {
     return []
   }

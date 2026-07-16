@@ -41,7 +41,7 @@ export function useFerramenta(id: string | undefined) {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    if (!id) return
+    if (!id) { setLoading(false); return }
     setLoading(true)
     setError(null)
     try {
@@ -104,16 +104,21 @@ export function useAtualizarFerramenta() {
 export function useFerramentasArquivadas() {
   const [tools, setTools] = useState<Tool[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try { setTools(await listarFerramentasArquivadas()) }
-    catch { setTools([]) }
+    catch (e) {
+      setTools([])
+      setError(e instanceof Error ? e.message : 'Erro ao carregar ferramentas arquivadas')
+    }
     finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
-  return { tools, loading, reload: load }
+  return { tools, loading, error, reload: load }
 }
 
 export function useArquivarFerramenta() {

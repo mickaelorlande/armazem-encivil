@@ -25,7 +25,7 @@ export function ToolDetailPage() {
 
   const { tool, loading: loadingTool, reload } = useFerramenta(id);
   const loanFiltros = useMemo(() => ({ ferramentaId: id, limit: 30 }), [id]);
-  const { loans, loading: loadingLoans, reload: reloadLoans } = useEmprestimos(loanFiltros);
+  const { loans, loading: loadingLoans, error: loansError, reload: reloadLoans } = useEmprestimos(loanFiltros);
   const { config } = useConfiguracoes();
 
   const { arquivar, loading: archiving } = useArquivarFerramenta();
@@ -145,14 +145,21 @@ export function ToolDetailPage() {
               Registar Empréstimo
             </button>
           )}
-          {tool.status === 'emprestada' && activeLoan && (
-            <button
-              onClick={() => navigate(`/ferramentas/${tool.id}/devolucao`)}
-              className="flex items-center justify-center gap-2 py-3.5 bg-success text-success-foreground rounded-xl font-semibold text-sm hover:bg-success/90 active:scale-[0.98] transition-all shadow-sm"
-            >
-              <Undo2 className="w-5 h-5" />
-              Registar Devolução
-            </button>
+          {tool.status === 'emprestada' && !loadingLoans && (
+            loansError ? (
+              <div className="flex items-center justify-between gap-3 py-3 px-4 bg-destructive/10 border border-destructive/30 rounded-xl text-sm">
+                <span className="text-destructive font-medium">Erro ao carregar empréstimo ativo.</span>
+                <button onClick={reloadLoans} className="text-primary font-semibold hover:underline shrink-0">Tentar novamente</button>
+              </div>
+            ) : activeLoan ? (
+              <button
+                onClick={() => navigate(`/ferramentas/${tool.id}/devolucao`)}
+                className="flex items-center justify-center gap-2 py-3.5 bg-success text-success-foreground rounded-xl font-semibold text-sm hover:bg-success/90 active:scale-[0.98] transition-all shadow-sm"
+              >
+                <Undo2 className="w-5 h-5" />
+                Registar Devolução
+              </button>
+            ) : null
           )}
         </div>
       )}

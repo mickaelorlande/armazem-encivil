@@ -53,10 +53,14 @@ export function ToolFormPage() {
 
   useEffect(() => {
     if (isEdit) return;
-    supabase.rpc('gerar_codigo_ferramenta').then(({ data }) => {
-      if (data) setCodigoPreview(data);
-      setGerandoCodigo(false);
-    });
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('gerar_codigo_ferramenta');
+        if (data && !error) setCodigoPreview(data as string);
+      } finally {
+        setGerandoCodigo(false);
+      }
+    })();
   }, [isEdit]);
 
   if (isEdit && loadingTool) {

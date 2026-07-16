@@ -13,6 +13,8 @@ export function SignaturePad({ label, value, onChange, disabled }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const drawingRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const valueRef = useRef(value);
+  const activeRef = useRef(false);
   const [hasStrokes, setHasStrokes] = useState(false);
   // Só "arma" o desenho depois de um toque dedicado — enquanto inativo, o
   // canvas deixa o dedo do utilizador fazer scroll normalmente. Sem isto,
@@ -47,9 +49,25 @@ export function SignaturePad({ label, value, onChange, disabled }: Props) {
     ctx.strokeStyle = '#1e293b';
   }, []);
 
+  useEffect(() => { valueRef.current = value; }, [value]);
+
   useEffect(() => {
     setupCanvas();
-    const onResize = () => setupCanvas();
+    const onResize = () => {
+      setupCanvas();
+      const v = valueRef.current;
+      if (!v) return;
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx) return;
+      const img = new Image();
+      img.onload = () => {
+        const dpr = window.devicePixelRatio || 1;
+        ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+        ctx.drawImage(img, 0, 0, canvas.width / dpr, canvas.height / dpr);
+      };
+      img.src = v;
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [setupCanvas]);
@@ -77,7 +95,7 @@ export function SignaturePad({ label, value, onChange, disabled }: Props) {
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (disabled) return;
-    if (!active) { setActive(true); return; }
+    if (!activeRef.current) { activeRef.current = true; setActive(true); return; }
     (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
     drawingRef.current = true;
     lastPointRef.current = getPoint(e);
