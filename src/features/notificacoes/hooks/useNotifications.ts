@@ -19,9 +19,11 @@ export function useNotifications() {
   const { podeValidar } = useRole()
   const [items, setItems] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setError(false)
     const today = new Date().toISOString().split('T')[0]
 
     const [produtosRes, atrasoRes, subsPend, autosPend] = await Promise.all([
@@ -98,6 +100,8 @@ export function useNotifications() {
       })
     })
 
+    if (produtosRes.error || atrasoRes.error) setError(true)
+
     setItems(notifs)
     setLoading(false)
   }, [podeValidar])
@@ -113,5 +117,5 @@ export function useNotifications() {
     }
   }, [load])
 
-  return { notifications: items, count: items.length, loading, reload: load }
+  return { notifications: items, count: items.length, loading, error, reload: load }
 }

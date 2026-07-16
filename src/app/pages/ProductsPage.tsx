@@ -337,10 +337,14 @@ function AddProductModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   // Pré-visualização apenas — não consome a sequência. O código real é
   // atribuído pela coluna DEFAULT da DB só quando o produto é criado.
   useEffect(() => {
-    supabase.rpc('gerar_codigo_produto').then(({ data }) => {
-      if (data) setCodigoPreview(data);
-      setGerandoCodigo(false);
-    });
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('gerar_codigo_produto');
+        if (data && !error) setCodigoPreview(data as string);
+      } finally {
+        setGerandoCodigo(false);
+      }
+    })();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

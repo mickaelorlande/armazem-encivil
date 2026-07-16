@@ -5,6 +5,7 @@ import type { AppNotification } from '@/features/notificacoes/hooks/useNotificat
 interface Props {
   notifications: AppNotification[]
   loading: boolean
+  error?: boolean
   onClose: () => void
 }
 
@@ -21,7 +22,7 @@ function iconBg(n: AppNotification) {
   return n.severity === 'danger' ? 'bg-destructive/10' : 'bg-warning/10'
 }
 
-export function NotificationPanel({ notifications, loading, onClose }: Props) {
+export function NotificationPanel({ notifications, loading, error, onClose }: Props) {
   const navigate = useNavigate()
 
   return (
@@ -44,6 +45,13 @@ export function NotificationPanel({ notifications, loading, onClose }: Props) {
       <div className="max-h-72 overflow-y-auto overscroll-contain">
         {loading ? (
           <div className="p-6 text-center text-sm text-muted-foreground">A carregar…</div>
+        ) : error ? (
+          <div className="p-6 flex flex-col items-center gap-2.5">
+            <div className="w-11 h-11 bg-destructive/10 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+            </div>
+            <p className="text-sm text-muted-foreground text-center">Erro ao carregar alertas. Tente de novo mais tarde.</p>
+          </div>
         ) : notifications.length === 0 ? (
           <div className="p-6 flex flex-col items-center gap-2.5">
             <div className="w-11 h-11 bg-success/10 rounded-full flex items-center justify-center">

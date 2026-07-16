@@ -19,7 +19,7 @@ export function Header({ onMenuOpen }: HeaderProps) {
   const navigate = useNavigate()
   const { signOut } = useAuth()
   const { nome, role } = useRole()
-  const { notifications, count: notifCount, loading: notifLoading } = useNotifications()
+  const { notifications, count: notifCount, loading: notifLoading, error: notifError } = useNotifications()
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
@@ -92,13 +92,16 @@ export function Header({ onMenuOpen }: HeaderProps) {
             >
               <Bell className="w-5 h-5 text-foreground" />
               {notifCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {notifCount > 9 ? '9+' : notifCount}
+                </span>
               )}
             </button>
             {notifOpen && (
               <NotificationPanel
                 notifications={notifications}
                 loading={notifLoading}
+                error={notifError}
                 onClose={() => setNotifOpen(false)}
               />
             )}
