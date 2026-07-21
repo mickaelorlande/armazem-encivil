@@ -1,4 +1,4 @@
-import { Package, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight, Building2, Wallet, TrendingDown, TrendingUp, ShieldAlert } from 'lucide-react';
+import { Package, ArrowDownCircle, ArrowUpCircle, AlertTriangle, ChevronRight, Building2, Wallet, TrendingDown, TrendingUp, ShieldAlert, Fuel } from 'lucide-react';
 import { Link } from 'react-router';
 import { StatCard } from '../components/StatCard';
 import { StockBadge } from '../components/StockBadge';
@@ -51,7 +51,7 @@ function SkeletonCard() {
 export function DashboardPage() {
   const { stats, loading } = useDashboard();
   const { resumo, loading: obrasLoading } = useResumoObras();
-  const { podeArmazem, podeValidar } = useRole();
+  const { podeArmazem, podeCombustivel, podeValidar } = useRole();
 
   const porValidar = (resumo?.contratosPorValidar ?? 0) + (resumo?.autosPorValidar ?? 0);
 
@@ -63,22 +63,35 @@ export function DashboardPage() {
         <p className="text-sm text-muted-foreground mt-0.5">Visão geral · ENCIVIL Gestão</p>
       </div>
 
-      {podeArmazem && (
-        <div className="grid grid-cols-2 gap-3 enc-fade-up">
-          <Link
-            to="/novo-movimento?tipo=saida"
-            className="flex items-center justify-center gap-2 py-4 bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 active:scale-95 transition-all font-medium shadow-sm"
-          >
-            <ArrowUpCircle className="w-5 h-5" />
-            <span>Registar Saída</span>
-          </Link>
-          <Link
-            to="/novo-movimento?tipo=entrada"
-            className="flex items-center justify-center gap-2 py-4 bg-success text-success-foreground rounded-xl hover:bg-success/90 active:scale-95 transition-all font-medium shadow-sm"
-          >
-            <ArrowDownCircle className="w-5 h-5" />
-            <span>Registar Entrada</span>
-          </Link>
+      {(podeArmazem || podeCombustivel) && (
+        <div className={`grid gap-3 enc-fade-up ${podeArmazem && podeCombustivel ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          {podeArmazem && (
+            <Link
+              to="/novo-movimento?tipo=saida"
+              className="flex items-center justify-center gap-2 py-4 bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 active:scale-95 transition-all font-medium shadow-sm"
+            >
+              <ArrowUpCircle className="w-5 h-5" />
+              <span>Registar Saída</span>
+            </Link>
+          )}
+          {podeArmazem && (
+            <Link
+              to="/novo-movimento?tipo=entrada"
+              className="flex items-center justify-center gap-2 py-4 bg-success text-success-foreground rounded-xl hover:bg-success/90 active:scale-95 transition-all font-medium shadow-sm"
+            >
+              <ArrowDownCircle className="w-5 h-5" />
+              <span>Registar Entrada</span>
+            </Link>
+          )}
+          {podeCombustivel && (
+            <Link
+              to="/combustivel/abastecimento"
+              className="flex items-center justify-center gap-2 py-4 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 active:scale-95 transition-all font-medium shadow-sm"
+            >
+              <Fuel className="w-5 h-5" />
+              <span>Abastecimento</span>
+            </Link>
+          )}
         </div>
       )}
 

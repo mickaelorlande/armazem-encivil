@@ -5,6 +5,7 @@ import {
   Plus,
   History,
   FileBarChart,
+  CalendarDays,
   Settings,
   CircleHelp,
   Wrench,
@@ -45,9 +46,10 @@ const menuSections: MenuSection[] = [
   {
     title: 'Gestão',
     items: [
-      { path: '/relatorios',    label: 'Relatórios',    icon: FileBarChart },
-      { path: '/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
-      { path: '/ajuda',         label: 'Ajuda',         icon: CircleHelp },
+      { path: '/relatorios',         label: 'Relatórios',        icon: FileBarChart },
+      { path: '/relatorio-semanal',  label: 'Rel. Semanal',      icon: CalendarDays },
+      { path: '/configuracoes',      label: 'Configurações',     icon: Settings, adminOnly: true },
+      { path: '/ajuda',              label: 'Ajuda',             icon: CircleHelp },
     ],
   },
 ];

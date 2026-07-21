@@ -16,7 +16,7 @@ export type AppNotification = {
 }
 
 export function useNotifications() {
-  const { podeValidar } = useRole()
+  const { podeValidar, podeCombustivel } = useRole()
   const [items, setItems] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -26,7 +26,7 @@ export function useNotifications() {
     setError(false)
     const today = new Date().toISOString().split('T')[0]
 
-    const [produtosRes, atrasoRes, subsPend, autosPend] = await Promise.all([
+    const [produtosRes, atrasoRes, subsPend, autosPend, combustPend] = await Promise.all([
       supabase.from('produtos').select('id, nome, unidade, stock_atual, stock_minimo').eq('ativo', true),
       supabase
         .from('emprestimos_ferramentas')
@@ -40,6 +40,10 @@ export function useNotifications() {
       podeValidar
         ? supabase.from('autos_medicao').select('id, numero, subempreiteiros(nome)').eq('estado', 'rascunho')
         : Promise.resolve({ data: [] }),
+      podeCombustivel
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? (supabase as any).from('comb_abastecimentos_pendentes').select('id', { count: 'exact', head: true })
+        : Promise.resolve({ data: null, count: 0 }),
     ])
 
     const notifs: AppNotification[] = []
@@ -100,11 +104,24 @@ export function useNotifications() {
       })
     })
 
+    // 4. Abastecimentos pendentes (quem pode escrever em combustível)
+    const pendCount = combustPend.count ?? 0
+    if (pendCount > 0) {
+      notifs.push({
+        id: 'comb-pendentes',
+        kind: 'pending',
+        title: `${pendCount} abastecimento${pendCount !== 1 ? 's' : ''} por aprovar`,
+        subtitle: 'Via QR code · aguarda validação',
+        severity: 'info',
+        link: '/combustivel',
+      })
+    }
+
     if (produtosRes.error || atrasoRes.error) setError(true)
 
     setItems(notifs)
     setLoading(false)
-  }, [podeValidar])
+  }, [podeValidar, podeCombustivel])
 
   useEffect(() => {
     load()

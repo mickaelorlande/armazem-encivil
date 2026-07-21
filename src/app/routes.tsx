@@ -101,15 +101,22 @@ import { VeiculoFormPage } from './pages/VeiculoFormPage';
 import { NewMovementPage } from './pages/NewMovementPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { RelatorioSemanalPage } from './pages/RelatorioSemanalPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { DocsPage } from './pages/DocsPage';
 import { HelpPage } from './pages/HelpPage';
+import { AbastecimentoPublicPage } from './pages/pub/AbastecimentoPublicPage';
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     Component: LoginPage,
+  },
+  {
+    path: '/pub/combustivel',
+    element: <AbastecimentoPublicPage />,
+    errorElement: <RouteErrorPage />,
   },
   {
     element: <AuthGuard />,
@@ -147,7 +154,8 @@ export const router = createBrowserRouter([
           { path: 'combustivel/veiculo/:id/editar',    element: <VeiculoFormPage /> },
           { path: 'novo-movimento', element: <NewMovementPage /> },
           { path: 'historico',     element: <HistoryPage /> },
-          { path: 'relatorios',    element: <ReportsPage /> },
+          { path: 'relatorios',          element: <ReportsPage /> },
+          { path: 'relatorio-semanal',  element: <RelatorioSemanalPage /> },
           { path: 'configuracoes', element: <RoleGuard require="admin"><SettingsPage /></RoleGuard> },
           { path: 'ajuda',         element: <HelpPage /> },
           { path: 'documentacao',  element: <DocsPage /> },
