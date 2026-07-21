@@ -1,14 +1,45 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router';
-import { Fuel, Plus, Truck, Droplet, Building2, Gauge, Pencil, QrCode, Printer, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import {
+  Fuel, Plus, Truck, Droplet, Building2, Gauge, Pencil, QrCode,
+  Printer, Clock, CheckCircle2, XCircle, AlertTriangle,
+  ChevronLeft, ChevronRight, Calendar,
+} from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { fmtEuro, fmtNumber } from '../lib/format';
 import { getVehicleTypeLabel, getFuelTypeLabel } from '@/features/combustivel/labels';
 import { useAbastecimentos, useVeiculos } from '@/features/combustivel/hooks/useCombustivel';
 import { usePendentes } from '@/features/combustivel/hooks/usePendentes';
 import { useRole } from '@/features/auth/useRole';
+import type { FuelEntry } from '@/app/types';
 
 type Tab = 'abastecimentos' | 'veiculos' | 'pendentes';
+type PeriodoTipo = 'mes' | 'tudo';
+
+function mesLabel(d: Date) {
+  return d.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })
+}
+
+function primeiroDiaMes(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), 1)
+}
+
+function ultimoDiaMes(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0)
+}
+
+function toISO(d: Date) {
+  return d.toISOString().split('T')[0]
+}
+
+function diaLabel(dateStr: string) {
+  const d = new Date(dateStr + 'T12:00:00')
+  const hoje = toISO(new Date())
+  const ontem = toISO(new Date(Date.now() - 86_400_000))
+  if (dateStr === hoje)  return 'Hoje'
+  if (dateStr === ontem) return 'Ontem'
+  return d.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'short' })
+}
 
 export function CombustivelPage() {
   const navigate = useNavigate();
@@ -16,16 +47,37 @@ export function CombustivelPage() {
   const [tab, setTab] = useState<Tab>('abastecimentos');
   const [actionId, setActionId] = useState<string | null>(null);
 
-  const { entries, loading } = useAbastecimentos();
+  // Filtros da aba de abastecimentos
+  const [periodoTipo, setPeriodoTipo] = useState<PeriodoTipo>('mes');
+  const [mesRef, setMesRef] = useState(() => primeiroDiaMes(new Date()));
+  const [veiculoFiltro, setVeiculoFiltro] = useState('');
+
+  const filtros = useMemo(() => ({
+    veiculoId: veiculoFiltro || undefined,
+    dataInicio: periodoTipo === 'mes' ? toISO(primeiroDiaMes(mesRef)) : undefined,
+    dataFim:    periodoTipo === 'mes' ? toISO(ultimoDiaMes(mesRef))   : undefined,
+  }), [periodoTipo, mesRef, veiculoFiltro]);
+
+  const { entries, loading }          = useAbastecimentos(filtros);
   const { vehicles, loading: vLoading } = useVeiculos(true);
   const { items: pendentes, loading: pLoading, error: pError, aprovar, rejeitar } = usePendentes();
 
   const totalGasto  = useMemo(() => entries.reduce((s, e) => s + e.totalCost, 0), [entries]);
   const totalLitros = useMemo(() => entries.reduce((s, e) => s + e.liters, 0), [entries]);
 
+  // Agrupa entradas por data (YYYY-MM-DD), mantém ordem decrescente
+  const porDia = useMemo(() => {
+    const map = new Map<string, FuelEntry[]>();
+    for (const e of entries) {
+      const k = toISO(e.date);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(e);
+    }
+    return [...map.entries()].sort(([a], [b]) => b.localeCompare(a));
+  }, [entries]);
+
   const abrirQR = (id: string, name: string, code: string) => {
-    const url = `/pub/imprimir-qr?v=${id}&vn=${encodeURIComponent(name)}&vc=${encodeURIComponent(code)}`;
-    window.open(url, '_blank');
+    window.open(`/pub/imprimir-qr?v=${id}&vn=${encodeURIComponent(name)}&vc=${encodeURIComponent(code)}`, '_blank');
   };
 
   const handleAprovar = async (id: string) => {
@@ -42,9 +94,15 @@ export function CombustivelPage() {
   };
 
   const subtitleMap: Record<Tab, string> = {
-    abastecimentos: loading ? 'A carregar…' : `${entries.length} abastecimento${entries.length !== 1 ? 's' : ''} · ${fmtEuro(totalGasto)} · ${fmtNumber(totalLitros)} L`,
-    veiculos:       vLoading ? 'A carregar…' : `${vehicles.length} viatura${vehicles.length !== 1 ? 's' : ''}/máquina${vehicles.length !== 1 ? 's' : ''}`,
-    pendentes:      pLoading ? 'A carregar…' : `${pendentes.length} pendente${pendentes.length !== 1 ? 's' : ''} por aprovação`,
+    abastecimentos: loading
+      ? 'A carregar…'
+      : `${entries.length} abastecimento${entries.length !== 1 ? 's' : ''} · ${fmtEuro(totalGasto)} · ${fmtNumber(totalLitros)} L`,
+    veiculos: vLoading
+      ? 'A carregar…'
+      : `${vehicles.length} viatura${vehicles.length !== 1 ? 's' : ''}/máquina${vehicles.length !== 1 ? 's' : ''}`,
+    pendentes: pLoading
+      ? 'A carregar…'
+      : `${pendentes.length} pendente${pendentes.length !== 1 ? 's' : ''} por aprovação`,
   };
 
   return (
@@ -92,27 +150,133 @@ export function CombustivelPage() {
 
       {/* ── Abastecimentos ─────────────────────────────── */}
       {tab === 'abastecimentos' && (
-        loading ? (
-          <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
-        ) : entries.length === 0 ? (
-          <EmptyState icon={Fuel} title="Sem abastecimentos" description="Registe o primeiro abastecimento de uma viatura ou máquina." />
-        ) : (
-          <div className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden">
-            {entries.map(e => (
-              <Link key={e.id} to={`/combustivel/abastecimento/${e.id}/editar`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-accent/40 transition-colors">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{e.vehicleName ?? '—'} <span className="text-xs text-muted-foreground font-normal">{e.vehicleCode}</span></p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                    <span>{e.date.toLocaleDateString('pt-PT')}</span>
-                    {e.obraName && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" /> {e.obraName}</span>}
-                    <span>{fmtNumber(e.liters)} L · {fmtEuro(e.pricePerLiter)}/L</span>
-                  </p>
-                </div>
-                <span className="text-sm font-bold whitespace-nowrap">{fmtEuro(e.totalCost)}</span>
-              </Link>
-            ))}
+        <div className="space-y-3">
+
+          {/* Barra de filtros */}
+          <div className="flex flex-col sm:flex-row gap-2">
+
+            {/* Navegador de período */}
+            <div className="flex items-center gap-1 bg-card border border-border rounded-xl p-1 flex-1 min-w-0">
+              <button
+                onClick={() => setPeriodoTipo('tudo')}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0 ${
+                  periodoTipo === 'tudo' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                Tudo
+              </button>
+              <div className={`flex items-center gap-1 flex-1 min-w-0 transition-opacity ${periodoTipo !== 'mes' ? 'opacity-40 pointer-events-none' : ''}`}>
+                <button
+                  onClick={() => { setPeriodoTipo('mes'); setMesRef(d => new Date(d.getFullYear(), d.getMonth() - 1, 1)); }}
+                  className="p-1.5 hover:bg-accent rounded-lg transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setPeriodoTipo('mes')}
+                  className={`flex-1 min-w-0 text-center text-sm font-semibold capitalize truncate px-1 py-2 rounded-lg transition-colors ${
+                    periodoTipo === 'mes' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                  }`}
+                >
+                  {mesLabel(mesRef)}
+                </button>
+                <button
+                  onClick={() => { setPeriodoTipo('mes'); setMesRef(d => new Date(d.getFullYear(), d.getMonth() + 1, 1)); }}
+                  disabled={mesRef >= primeiroDiaMes(new Date())}
+                  className="p-1.5 hover:bg-accent rounded-lg transition-colors disabled:opacity-30"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Filtro de viatura */}
+            <select
+              value={veiculoFiltro}
+              onChange={e => setVeiculoFiltro(e.target.value)}
+              className="bg-card border border-border rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 sm:w-48"
+            >
+              <option value="">Todas as viaturas</option>
+              {vehicles.map(v => (
+                <option key={v.id} value={v.id}>{v.name} {v.code ? `(${v.code})` : ''}</option>
+              ))}
+            </select>
           </div>
-        )
+
+          {/* Sumário do período */}
+          {!loading && entries.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-card border border-border rounded-xl p-3 text-center">
+                <p className="text-xs text-muted-foreground mb-0.5">Abastecimentos</p>
+                <p className="text-lg font-bold">{entries.length}</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-3 text-center">
+                <p className="text-xs text-muted-foreground mb-0.5">Total litros</p>
+                <p className="text-lg font-bold">{fmtNumber(totalLitros)} L</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-3 text-center">
+                <p className="text-xs text-muted-foreground mb-0.5">Custo total</p>
+                <p className="text-lg font-bold">{fmtEuro(totalGasto)}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Lista agrupada por dia */}
+          {loading ? (
+            <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+          ) : entries.length === 0 ? (
+            <EmptyState
+              icon={Fuel}
+              title="Sem abastecimentos"
+              description={periodoTipo === 'mes' ? `Nenhum abastecimento em ${mesLabel(mesRef)}.` : 'Nenhum abastecimento registado.'}
+            />
+          ) : (
+            <div className="space-y-4">
+              {porDia.map(([dia, dayEntries]) => (
+                <div key={dia}>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1 capitalize">
+                    {diaLabel(dia)}
+                    <span className="ml-2 font-normal normal-case">
+                      · {fmtEuro(dayEntries.reduce((s, e) => s + e.totalCost, 0))}
+                      · {fmtNumber(dayEntries.reduce((s, e) => s + e.liters, 0))} L
+                    </span>
+                  </p>
+                  <div className="bg-card rounded-2xl border border-border divide-y divide-border overflow-hidden">
+                    {dayEntries.map(e => (
+                      <Link
+                        key={e.id}
+                        to={`/combustivel/abastecimento/${e.id}/editar`}
+                        className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+                      >
+                        <div className="min-w-0 flex items-center gap-3">
+                          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                            <Fuel className="w-4 h-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold truncate">
+                              {e.vehicleName ?? '—'}
+                              {e.vehicleCode && <span className="text-xs font-normal text-muted-foreground ml-1">{e.vehicleCode}</span>}
+                            </p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
+                              <span>{fmtNumber(e.liters)} L · {fmtEuro(e.pricePerLiter)}/L</span>
+                              {e.obraName && <span className="flex items-center gap-1"><Building2 className="w-3 h-3" />{e.obraName}</span>}
+                              {e.location && <span>{e.location}</span>}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold">{fmtEuro(e.totalCost)}</p>
+                          {e.responsible && <p className="text-xs text-muted-foreground">{e.responsible}</p>}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* ── Viaturas & Máquinas ────────────────────────── */}
@@ -123,7 +287,6 @@ export function CombustivelPage() {
           <EmptyState icon={Truck} title="Sem viaturas registadas" description="Adicione as viaturas e máquinas da empresa para poder registar abastecimentos." />
         ) : (
           <>
-            {/* Dica QR */}
             <div className="flex items-start gap-3 p-3.5 bg-primary/5 border border-primary/15 rounded-xl text-sm">
               <QrCode className="w-4 h-4 text-primary mt-0.5 shrink-0" />
               <p className="text-muted-foreground">
@@ -185,7 +348,6 @@ export function CombustivelPage() {
                   </div>
                   <span className="text-base font-bold whitespace-nowrap">{fmtEuro(p.custo_total)}</span>
                 </div>
-
                 <div className="flex items-center gap-4 text-sm">
                   <span className="flex items-center gap-1 text-muted-foreground">
                     <Fuel className="w-3.5 h-3.5" /> {fmtNumber(p.litros)} L
@@ -193,7 +355,6 @@ export function CombustivelPage() {
                   {p.local && <span className="text-muted-foreground truncate">{p.local}</span>}
                   {p.contador != null && <span className="text-muted-foreground">{fmtNumber(p.contador)} km/h</span>}
                 </div>
-
                 {podeCombustivel && (
                   <div className="flex gap-2 pt-1">
                     <button

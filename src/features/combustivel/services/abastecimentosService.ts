@@ -46,12 +46,16 @@ const SELECT = '*, comb_veiculos(nome, codigo, unidade_contador), obras(nome)'
 export type FiltrosAbastecimentos = {
   veiculoId?: string
   obraId?: string
+  dataInicio?: string   // YYYY-MM-DD
+  dataFim?: string      // YYYY-MM-DD
 }
 
 export async function listarAbastecimentos(filtros: FiltrosAbastecimentos = {}): Promise<FuelEntry[]> {
   let query = supabase.from('comb_abastecimentos').select(SELECT).order('data', { ascending: false })
-  if (filtros.veiculoId) query = query.eq('veiculo_id', filtros.veiculoId)
-  if (filtros.obraId)    query = query.eq('obra_id', filtros.obraId)
+  if (filtros.veiculoId)   query = query.eq('veiculo_id', filtros.veiculoId)
+  if (filtros.obraId)      query = query.eq('obra_id', filtros.obraId)
+  if (filtros.dataInicio)  query = query.gte('data', filtros.dataInicio)
+  if (filtros.dataFim)     query = query.lte('data', filtros.dataFim)
   const { data, error } = await query
   if (error) throw error
   return (data as AbastecimentoRow[]).map(toFuelEntry)

@@ -1,0 +1,21 @@
+# Cloudflare Pages — cache headers
+# sw.js e index.html NUNCA devem ser cacheados pelo CDN ou pelo browser.
+# São eles que determinam se há uma versão nova — se o CDN servir versões
+# velhas destes ficheiros, o utilizador fica preso no bundle antigo mesmo
+# depois de um deploy.
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/workbox-*.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# Assets com hash no nome podem ser cacheados agressivamente (imutáveis)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

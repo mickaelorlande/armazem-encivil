@@ -1,14 +1,12 @@
+import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { RefreshCw, X } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
-// Verifica por uma nova versão a cada 60s e sempre que a app volta a primeiro
-// plano — importante num PWA, que fica aberto/suspenso durante muito tempo e,
-// por omissão, só verificaria a cada ~24h.
-const UPDATE_CHECK_INTERVAL_MS = 60_000;
+const CHECK_INTERVAL_MS = 30_000;
 
 export function UpdatePrompt() {
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
+    needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(_swUrl, registration) {
@@ -16,13 +14,10 @@ export function UpdatePrompt() {
 
       const check = () => {
         if (registration.installing || !navigator.onLine) return;
-        registration.update().catch(() => { /* sem rede — tenta na próxima */ });
+        registration.update().catch(() => {});
       };
 
-      setInterval(check, UPDATE_CHECK_INTERVAL_MS);
-
-      // Ao reabrir/voltar o foco ao PWA, verifica logo (o setInterval não corre
-      // enquanto a app está suspensa em segundo plano, sobretudo no iOS).
+      setInterval(check, CHECK_INTERVAL_MS);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') check();
       });
@@ -30,32 +25,31 @@ export function UpdatePrompt() {
     },
   });
 
+  // Auto-atualizar 8 segundos depois de detetar nova versão.
+  // O utilizador vê o banner brevemente e a app recarrega sozinha.
+  useEffect(() => {
+    if (!needRefresh) return;
+    const t = setTimeout(() => updateServiceWorker(true), 8_000);
+    return () => clearTimeout(t);
+  }, [needRefresh, updateServiceWorker]);
+
   if (!needRefresh) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[60] p-3 sm:p-4 flex justify-center pointer-events-none pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-      <div className="pointer-events-auto w-full max-w-md bg-card border border-border shadow-lg rounded-2xl p-4 flex items-center gap-3 enc-scale-in">
-        <div className="bg-primary/10 rounded-xl p-2 shrink-0">
-          <RefreshCw className="w-5 h-5 text-primary" />
-        </div>
+    // Fica acima da bottom nav mobile (h-16 = 64px) + safe area
+    <div className="fixed inset-x-0 z-[60] flex justify-center px-3 pointer-events-none"
+         style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom) + 0.5rem)' }}>
+      <div className="pointer-events-auto w-full max-w-md bg-primary text-primary-foreground shadow-xl rounded-2xl px-4 py-3 flex items-center gap-3">
+        <RefreshCw className="w-5 h-5 shrink-0 animate-spin" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground">Nova versão disponível</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Atualize para ter as últimas melhorias e correções.
-          </p>
+          <p className="text-sm font-semibold leading-tight">Nova versão — a atualizar…</p>
+          <p className="text-xs opacity-80 mt-0.5">O app vai recarregar automaticamente.</p>
         </div>
         <button
           onClick={() => updateServiceWorker(true)}
-          className="shrink-0 bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 rounded-xl hover:bg-primary/90 active:scale-[0.97] transition-all"
+          className="shrink-0 bg-white/20 hover:bg-white/30 text-sm font-bold px-3 py-1.5 rounded-xl transition-colors"
         >
-          Atualizar
-        </button>
-        <button
-          onClick={() => setNeedRefresh(false)}
-          aria-label="Dispensar"
-          className="shrink-0 p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-        >
-          <X className="w-4 h-4" />
+          Já
         </button>
       </div>
     </div>
