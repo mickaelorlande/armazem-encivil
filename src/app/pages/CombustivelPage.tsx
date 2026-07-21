@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router';
-import { Fuel, Plus, Truck, Droplet, Building2, Gauge, Pencil, QrCode, Copy, Check, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Fuel, Plus, Truck, Droplet, Building2, Gauge, Pencil, QrCode, Printer, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
 import { fmtEuro, fmtNumber } from '../lib/format';
 import { getVehicleTypeLabel, getFuelTypeLabel } from '@/features/combustivel/labels';
@@ -14,7 +14,6 @@ export function CombustivelPage() {
   const navigate = useNavigate();
   const { podeCombustivel } = useRole();
   const [tab, setTab] = useState<Tab>('abastecimentos');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const { entries, loading } = useAbastecimentos();
@@ -24,13 +23,9 @@ export function CombustivelPage() {
   const totalGasto  = useMemo(() => entries.reduce((s, e) => s + e.totalCost, 0), [entries]);
   const totalLitros = useMemo(() => entries.reduce((s, e) => s + e.liters, 0), [entries]);
 
-  const qrUrl = (id: string, name: string) =>
-    `${window.location.origin}/pub/combustivel?v=${id}&vn=${encodeURIComponent(name)}`;
-
-  const copiarQR = (id: string, name: string) => {
-    void navigator.clipboard.writeText(qrUrl(id, name));
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const abrirQR = (id: string, name: string, code: string) => {
+    const url = `/pub/imprimir-qr?v=${id}&vn=${encodeURIComponent(name)}&vc=${encodeURIComponent(code)}`;
+    window.open(url, '_blank');
   };
 
   const handleAprovar = async (id: string) => {
@@ -132,8 +127,8 @@ export function CombustivelPage() {
             <div className="flex items-start gap-3 p-3.5 bg-primary/5 border border-primary/15 rounded-xl text-sm">
               <QrCode className="w-4 h-4 text-primary mt-0.5 shrink-0" />
               <p className="text-muted-foreground">
-                Copie o link QR de cada viatura e gere um QR code gratuito em <strong className="text-foreground">qr-code-generator.com</strong>.
-                Imprima e cole no interior da viatura para os motoristas registarem abastecimentos sem login.
+                Clique em <strong className="text-foreground">Imprimir QR</strong> em cada viatura, imprima e cole no interior.
+                O motorista lê o QR code, lança o nome e os dados do abastecimento — sem precisar de login.
               </p>
             </div>
 
@@ -153,12 +148,10 @@ export function CombustivelPage() {
                     )}
                   </div>
                   <button
-                    onClick={() => copiarQR(v.id, v.name)}
+                    onClick={() => abrirQR(v.id, v.name, v.code ?? '')}
                     className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold border border-border rounded-lg hover:bg-accent transition-colors"
                   >
-                    {copiedId === v.id
-                      ? <><Check className="w-3.5 h-3.5 text-success" /> Link copiado!</>
-                      : <><Copy className="w-3.5 h-3.5" /> Copiar link QR</>}
+                    <Printer className="w-3.5 h-3.5" /> Imprimir QR
                   </button>
                 </div>
               ))}

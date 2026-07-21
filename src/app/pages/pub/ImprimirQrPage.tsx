@@ -1,0 +1,114 @@
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router'
+import { QRCodeSVG } from 'qrcode.react'
+import { Fuel, Printer, AlertTriangle } from 'lucide-react'
+
+// Página de impressão de QR code por viatura.
+// URL: /pub/imprimir-qr?v=UUID&vn=Nome+da+Viatura&vc=ENC-01
+// Abre numa nova aba e dispara automaticamente o diálogo de impressão.
+
+export function ImprimirQrPage() {
+  const [params] = useSearchParams()
+  const vehicleId   = params.get('v')  ?? ''
+  const vehicleName = params.get('vn') ?? 'Viatura'
+  const vehicleCode = params.get('vc') ?? ''
+
+  const [ready, setReady] = useState(false)
+
+  const formUrl = `${window.location.origin}/pub/combustivel?v=${vehicleId}&vn=${encodeURIComponent(vehicleName)}`
+
+  useEffect(() => {
+    if (!vehicleId) return
+    // Pequeno delay para o QR code renderizar antes de imprimir
+    const t = setTimeout(() => {
+      setReady(true)
+      window.print()
+    }, 600)
+    return () => clearTimeout(t)
+  }, [vehicleId])
+
+  if (!vehicleId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center">
+          <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+          <p className="text-gray-600">Parâmetros inválidos. Aceda via Combustível → Viaturas.</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {/* Botão imprimir (esconde na impressão via print:hidden) */}
+      <div className="print:hidden fixed top-4 right-4 z-50 flex gap-2">
+        <button
+          onClick={() => window.print()}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-700 transition-colors shadow-lg"
+        >
+          <Printer className="w-4 h-4" />
+          Imprimir
+        </button>
+        <button
+          onClick={() => window.close()}
+          className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+        >
+          Fechar
+        </button>
+      </div>
+
+      {/* Folha de impressão — A4 centrado */}
+      <div className="min-h-screen bg-white flex items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-6 max-w-sm w-full">
+
+          {/* Cabeçalho ENCIVIL */}
+          <div className="flex items-center gap-3 w-full justify-center border-b border-gray-200 pb-5">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+              <Fuel className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest">ENCIVIL · Combustível</p>
+              <p className="text-sm font-bold text-gray-500">Registo de Abastecimento</p>
+            </div>
+          </div>
+
+          {/* Viatura */}
+          <div className="text-center">
+            <p className="text-3xl font-black text-gray-900">{vehicleName}</p>
+            {vehicleCode && <p className="text-sm text-gray-400 font-medium mt-1">{vehicleCode}</p>}
+          </div>
+
+          {/* QR Code */}
+          <div className={`p-5 bg-white border-4 border-gray-900 rounded-2xl transition-opacity ${ready ? 'opacity-100' : 'opacity-0'}`}>
+            <QRCodeSVG
+              value={formUrl}
+              size={220}
+              level="M"
+              marginSize={1}
+            />
+          </div>
+
+          {/* Instrução */}
+          <div className="text-center space-y-1.5 border border-gray-200 rounded-xl p-4 w-full">
+            <p className="text-sm font-bold text-gray-800">Como registar um abastecimento:</p>
+            <ol className="text-sm text-gray-500 text-left space-y-1 list-decimal list-inside">
+              <li>Aponte a câmara do telemóvel para o QR code</li>
+              <li>Preencha o seu nome e os dados do abastecimento</li>
+              <li>Carregue em <strong className="text-gray-700">Registar Abastecimento</strong></li>
+            </ol>
+          </div>
+
+          {/* URL fallback pequenino */}
+          <p className="text-[9px] text-gray-300 text-center break-all">{formUrl}</p>
+        </div>
+      </div>
+
+      <style>{`
+        @media print {
+          body { margin: 0; }
+          @page { size: A4; margin: 20mm; }
+        }
+      `}</style>
+    </>
+  )
+}

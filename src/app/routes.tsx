@@ -107,6 +107,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { DocsPage } from './pages/DocsPage';
 import { HelpPage } from './pages/HelpPage';
 import { AbastecimentoPublicPage } from './pages/pub/AbastecimentoPublicPage';
+import { ImprimirQrPage } from './pages/pub/ImprimirQrPage';
 
 export const router = createBrowserRouter([
   {
@@ -116,6 +117,11 @@ export const router = createBrowserRouter([
   {
     path: '/pub/combustivel',
     element: <AbastecimentoPublicPage />,
+    errorElement: <RouteErrorPage />,
+  },
+  {
+    path: '/pub/imprimir-qr',
+    element: <ImprimirQrPage />,
     errorElement: <RouteErrorPage />,
   },
   {
