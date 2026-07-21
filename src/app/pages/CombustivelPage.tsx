@@ -3,17 +3,20 @@ import { useNavigate, Link } from 'react-router';
 import {
   Fuel, Plus, Truck, Droplet, Building2, Gauge, Pencil, QrCode,
   Printer, Clock, CheckCircle2, XCircle, AlertTriangle,
-  ChevronLeft, ChevronRight, Calendar,
+  ChevronLeft, ChevronRight, Calendar, Download, BarChart2,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { EmptyState } from '../components/EmptyState';
 import { fmtEuro, fmtNumber } from '../lib/format';
+import { exportarCsv } from '../lib/exportCsv';
 import { getVehicleTypeLabel, getFuelTypeLabel } from '@/features/combustivel/labels';
 import { useAbastecimentos, useVeiculos } from '@/features/combustivel/hooks/useCombustivel';
 import { usePendentes } from '@/features/combustivel/hooks/usePendentes';
 import { useRole } from '@/features/auth/useRole';
 import type { FuelEntry } from '@/app/types';
 
-type Tab = 'abastecimentos' | 'veiculos' | 'pendentes';
+type Tab = 'abastecimentos' | 'veiculos' | 'pendentes' | 'analise';
 type PeriodoTipo = 'mes' | 'tudo';
 
 function mesLabel(d: Date) {
@@ -59,11 +62,75 @@ export function CombustivelPage() {
   }), [periodoTipo, mesRef, veiculoFiltro]);
 
   const { entries, loading }          = useAbastecimentos(filtros);
+
+  // Para análise por viatura: mesmos filtros de período mas sem filtro de viatura
+  const filtrosAnalise = useMemo(() => ({
+    dataInicio: periodoTipo === 'mes' ? toISO(primeiroDiaMes(mesRef)) : undefined,
+    dataFim:    periodoTipo === 'mes' ? toISO(ultimoDiaMes(mesRef))   : undefined,
+  }), [periodoTipo, mesRef]);
+  const { entries: allEntries, loading: aLoading } = useAbastecimentos(filtrosAnalise);
+
   const { vehicles, loading: vLoading } = useVeiculos(true);
   const { items: pendentes, loading: pLoading, error: pError, aprovar, rejeitar } = usePendentes();
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExportCombustivel() {
+    if (entries.length === 0) return
+    setExporting(true)
+    try {
+      const rows = entries.map(e => ({
+        Data: e.date.toLocaleDateString('pt-PT'),
+        Viatura: e.vehicleName ?? '',
+        Matrícula: e.vehicleCode ?? '',
+        'Litros': e.liters,
+        'Custo Total (€)': e.totalCost,
+        'Preço/L (€)': e.pricePerLiter,
+        Contador: e.counter ?? '',
+        Local: e.location ?? '',
+        Responsável: e.responsible ?? '',
+        Obra: e.obraName ?? '',
+        Observações: e.notes ?? '',
+      }))
+      exportarCsv(rows, 'combustivel')
+      toast.success(`${rows.length} abastecimento${rows.length !== 1 ? 's' : ''} exportados`)
+    } catch {
+      toast.error('Erro ao exportar')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const totalGasto  = useMemo(() => entries.reduce((s, e) => s + e.totalCost, 0), [entries]);
   const totalLitros = useMemo(() => entries.reduce((s, e) => s + e.liters, 0), [entries]);
+
+  // Análise por viatura
+  const porViatura = useMemo(() => {
+    type VStats = { name: string; code: string; count: number; litros: number; custo: number; lper100: number | null }
+    const map = new Map<string, VStats>()
+    for (const e of allEntries) {
+      if (!map.has(e.vehicleId)) {
+        map.set(e.vehicleId, { name: e.vehicleName ?? e.vehicleId, code: e.vehicleCode ?? '', count: 0, litros: 0, custo: 0, lper100: null })
+      }
+      const s = map.get(e.vehicleId)!
+      s.count++
+      s.litros += e.liters
+      s.custo  += e.totalCost
+    }
+    // Calcular L/100km por viatura (requer pelo menos 2 leituras de contador em km)
+    for (const [vid, stats] of map) {
+      const withKm = allEntries
+        .filter(e => e.vehicleId === vid && e.counter != null && e.counterUnit === 'km')
+        .sort((a, b) => a.counter! - b.counter!)
+      if (withKm.length >= 2) {
+        const km = withKm[withKm.length - 1].counter! - withKm[0].counter!
+        if (km > 0) {
+          const litersInRange = withKm.slice(1).reduce((s, e) => s + e.liters, 0)
+          stats.lper100 = (litersInRange / km) * 100
+        }
+      }
+    }
+    return [...map.values()].sort((a, b) => b.custo - a.custo)
+  }, [allEntries])
 
   // Agrupa entradas por data (YYYY-MM-DD), mantém ordem decrescente
   const porDia = useMemo(() => {
@@ -103,6 +170,9 @@ export function CombustivelPage() {
     pendentes: pLoading
       ? 'A carregar…'
       : `${pendentes.length} pendente${pendentes.length !== 1 ? 's' : ''} por aprovação`,
+    analise: aLoading
+      ? 'A carregar…'
+      : `${porViatura.length} viatura${porViatura.length !== 1 ? 's' : ''} com dados`,
   };
 
   return (
@@ -128,6 +198,7 @@ export function CombustivelPage() {
         {([
           ['abastecimentos', 'Abastecimentos', Droplet],
           ['veiculos',       'Viaturas & Máquinas', Truck],
+          ['analise',        'Análise', BarChart2],
           ['pendentes',      'Pendentes', Clock],
         ] as const).map(([v, label, Icon]) => (
           <button
@@ -202,6 +273,17 @@ export function CombustivelPage() {
                 <option key={v.id} value={v.id}>{v.name} {v.code ? `(${v.code})` : ''}</option>
               ))}
             </select>
+
+            {/* Exportar CSV */}
+            <button
+              onClick={handleExportCombustivel}
+              disabled={exporting || loading || entries.length === 0}
+              title="Exportar para Excel"
+              className="flex items-center gap-1.5 px-3 py-2 bg-card border border-border rounded-xl text-sm font-medium hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">{exporting ? 'A exportar…' : 'Excel'}</span>
+            </button>
           </div>
 
           {/* Sumário do período */}
@@ -323,6 +405,83 @@ export function CombustivelPage() {
         )
       )}
 
+      {/* ── Análise por Viatura ────────────────────────── */}
+      {tab === 'analise' && (
+        aLoading ? (
+          <div className="bg-card rounded-2xl border border-border p-8 text-center text-sm text-muted-foreground">A carregar…</div>
+        ) : porViatura.length === 0 ? (
+          <EmptyState icon={BarChart2} title="Sem dados para análise" description="Registe abastecimentos para ver estatísticas por viatura." />
+        ) : (
+          <div className="space-y-4">
+            {/* Gráfico de barras — custo por viatura */}
+            <div className="bg-card rounded-2xl border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h3 className="font-semibold text-sm">Custo por Viatura</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {periodoTipo === 'mes' ? mesLabel(mesRef) : 'Todos os períodos'}
+                </p>
+              </div>
+              <div className="p-4">
+                <ResponsiveContainer width="100%" height={Math.max(180, porViatura.length * 44)}>
+                  <BarChart
+                    data={porViatura.map(v => ({ name: v.code || v.name.split(' ')[0], custo: Math.round(v.custo * 100) / 100 }))}
+                    layout="vertical"
+                    margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false}
+                      tickFormatter={v => `${fmtEuro(v)}`} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} width={60} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '10px', fontSize: 12 }}
+                      formatter={(v: number) => [fmtEuro(v), 'Custo']}
+                    />
+                    <Bar dataKey="custo" fill="#3b82f6" radius={[0, 6, 6, 0]} maxBarSize={28} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Tabela de estatísticas */}
+            <div className="bg-card rounded-2xl border border-border overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h3 className="font-semibold text-sm">Estatísticas Detalhadas</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      {['Viatura', 'Abast.', 'Litros', 'Custo', '€/L médio', 'L/100km'].map(h => (
+                        <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {porViatura.map(v => (
+                      <tr key={v.name} className="hover:bg-accent/40 transition-colors">
+                        <td className="px-4 py-3 font-semibold">
+                          {v.name}
+                          {v.code && <span className="ml-1.5 text-xs text-muted-foreground font-normal">{v.code}</span>}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{v.count}</td>
+                        <td className="px-4 py-3 font-medium">{fmtNumber(v.litros)} L</td>
+                        <td className="px-4 py-3 font-bold">{fmtEuro(v.custo)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {v.litros > 0 ? fmtEuro(v.custo / v.litros) : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {v.lper100 != null ? `${fmtNumber(v.lper100)} L` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      )}
+
       {/* ── Pendentes ──────────────────────────────────── */}
       {tab === 'pendentes' && (
         pLoading ? (
@@ -355,6 +514,15 @@ export function CombustivelPage() {
                   {p.local && <span className="text-muted-foreground truncate">{p.local}</span>}
                   {p.contador != null && <span className="text-muted-foreground">{fmtNumber(p.contador)} km/h</span>}
                 </div>
+                {p.foto_url && (
+                  <a href={p.foto_url} target="_blank" rel="noopener noreferrer" className="block mt-1">
+                    <img
+                      src={p.foto_url}
+                      alt="Talão"
+                      className="h-24 w-auto rounded-lg border border-border object-cover hover:opacity-90 transition-opacity"
+                    />
+                  </a>
+                )}
                 {podeCombustivel && (
                   <div className="flex gap-2 pt-1">
                     <button

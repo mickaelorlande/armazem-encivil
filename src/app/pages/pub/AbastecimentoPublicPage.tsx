@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useSearchParams } from 'react-router'
-import { Fuel, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Fuel, CheckCircle2, AlertTriangle, Camera, X } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 
 // Página pública — sem auth. Acedida via QR code colado na viatura.
@@ -11,16 +11,37 @@ export function AbastecimentoPublicPage() {
   const vehicleId   = params.get('v')
   const vehicleName = params.get('vn') ?? 'Viatura'
 
-  const [nome,     setNome]     = useState('')
-  const [litros,   setLitros]   = useState('')
-  const [custo,    setCusto]    = useState('')
-  const [contador, setContador] = useState('')
-  const [local,    setLocal]    = useState('')
-  const [saving,   setSaving]   = useState(false)
-  const [done,     setDone]     = useState(false)
-  const [err,      setErr]      = useState('')
+  const [nome,       setNome]       = useState('')
+  const [litros,     setLitros]     = useState('')
+  const [custo,      setCusto]      = useState('')
+  const [contador,   setContador]   = useState('')
+  const [local,      setLocal]      = useState('')
+  const [foto,       setFoto]       = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [saving,     setSaving]     = useState(false)
+  const [done,       setDone]       = useState(false)
+  const [err,        setErr]        = useState('')
+  const fotoInputRef = useRef<HTMLInputElement>(null)
 
   const todayStr = new Date().toISOString().split('T')[0]
+
+  function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    setFoto(file)
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = ev => setFotoPreview(ev.target?.result as string)
+      reader.readAsDataURL(file)
+    } else {
+      setFotoPreview(null)
+    }
+  }
+
+  function removerFoto() {
+    setFoto(null)
+    setFotoPreview(null)
+    if (fotoInputRef.current) fotoInputRef.current.value = ''
+  }
 
   if (!vehicleId) {
     return (
@@ -42,15 +63,33 @@ export function AbastecimentoPublicPage() {
     e.preventDefault()
     setErr('')
 
-    const litrosN  = parseFloat(litros)
-    const custoN   = parseFloat(custo)
-    const contN    = contador ? parseFloat(contador) : null
+    const litrosN = parseFloat(litros)
+    const custoN  = parseFloat(custo)
+    const contN   = contador ? parseFloat(contador) : null
 
-    if (!nome.trim())     { setErr('Indique o seu nome.');              return }
-    if (!(litrosN > 0))   { setErr('Indique os litros abastecidos.');   return }
-    if (isNaN(custoN) || custoN < 0) { setErr('Indique o custo total.'); return }
+    if (!nome.trim())                    { setErr('Indique o seu nome.');              return }
+    if (!(litrosN > 0))                  { setErr('Indique os litros abastecidos.');   return }
+    if (isNaN(custoN) || custoN < 0)     { setErr('Indique o custo total.');           return }
 
     setSaving(true)
+
+    // Upload opcional da foto do talão
+    let fotoUrl: string | null = null
+    if (foto) {
+      const ext  = foto.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+      const path = `${vehicleId}/${todayStr}_${Date.now()}.${ext}`
+      const { error: uploadErr } = await supabase.storage
+        .from('combustivel-taloes')
+        .upload(path, foto, { contentType: foto.type, upsert: false })
+      if (uploadErr) {
+        setErr('Erro ao enviar foto. Tente sem foto ou tente novamente.')
+        setSaving(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from('combustivel-taloes').getPublicUrl(path)
+      fotoUrl = urlData.publicUrl
+    }
+
     const { error } = await supabase.from('comb_abastecimentos_pendentes').insert({
       veiculo_id:       vehicleId,
       veiculo_nome:     vehicleName,
@@ -60,6 +99,7 @@ export function AbastecimentoPublicPage() {
       custo_total:      custoN,
       contador:         contN,
       local:            local.trim() || null,
+      foto_url:         fotoUrl,
     })
     setSaving(false)
 
@@ -87,6 +127,7 @@ export function AbastecimentoPublicPage() {
             onClick={() => {
               setDone(false)
               setLitros(''); setCusto(''); setContador(''); setLocal('')
+              removerFoto()
             }}
             className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-blue-500/30 active:scale-[0.98] transition-transform"
           >
@@ -193,6 +234,47 @@ export function AbastecimentoPublicPage() {
                 placeholder="Ex: Galp N2"
               />
             </div>
+          </div>
+
+          {/* Foto do talão */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              Foto do talão{' '}
+              <span className="text-xs font-normal text-gray-400">(opcional)</span>
+            </label>
+            {fotoPreview ? (
+              <div className="relative">
+                <img
+                  src={fotoPreview}
+                  alt="Talão"
+                  className="w-full max-h-52 object-contain rounded-xl border border-gray-200 bg-gray-100"
+                />
+                <button
+                  type="button"
+                  onClick={removerFoto}
+                  className="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center shadow border border-gray-200"
+                >
+                  <X className="w-4 h-4 text-gray-700" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fotoInputRef.current?.click()}
+                className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center gap-1.5 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors active:scale-[0.98]"
+              >
+                <Camera className="w-6 h-6" />
+                <span className="text-sm font-medium">Fotografar ou escolher imagem</span>
+              </button>
+            )}
+            <input
+              ref={fotoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFotoChange}
+            />
           </div>
 
           {err && (

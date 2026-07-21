@@ -1,12 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
-import { History, ArrowDownCircle, ArrowUpCircle, LayoutList, X, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { History, ArrowDownCircle, ArrowUpCircle, LayoutList, X, ChevronLeft, ChevronRight, Search, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { MovementTypeBadge } from '../components/MovementTypeBadge';
 import { EmptyState } from '../components/EmptyState';
 import { getUnitLabel } from '../data/mockData';
+import { exportarCsv } from '../lib/exportCsv';
 import type { MovementType } from '../types';
 import { useMovimentosPaginados } from '@/features/movimentos/hooks/useMovimentos';
-import { type FiltrosMovimentos, PAGE_SIZE } from '@/features/movimentos/services/movimentosService';
+import { type FiltrosMovimentos, PAGE_SIZE, exportarMovimentos } from '@/features/movimentos/services/movimentosService';
 
 type PeriodFilter = 'todos' | 'hoje' | 'semana' | 'mes';
 type TypeFilter   = MovementType | 'todos';
@@ -50,6 +52,33 @@ export function HistoryPage() {
 
   const { movements, count, page, totalPages, loading, setPage } = useMovimentosPaginados(filtros);
   const hasFilter = filterType !== 'todos' || filterPeriod !== 'todos' || filterDestino.trim() !== '';
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const all = await exportarMovimentos(filtros)
+      const rows = all.map(m => ({
+        Data: m.date.toLocaleDateString('pt-PT'),
+        Hora: m.date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }),
+        Produto: m.productName,
+        Tipo: m.type,
+        Quantidade: m.quantity,
+        Unidade: m.unit,
+        'Stock Antes': m.previousStock,
+        'Stock Depois': m.newStock,
+        Responsável: m.responsible,
+        Destino: m.destination ?? '',
+        Observações: m.notes ?? '',
+      }))
+      exportarCsv(rows, 'historico_movimentos')
+      toast.success(`${all.length} movimento${all.length !== 1 ? 's' : ''} exportados`)
+    } catch {
+      toast.error('Erro ao exportar')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const selectCls = 'px-3 py-2.5 bg-input-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm w-full';
 
@@ -67,6 +96,14 @@ export function HistoryPage() {
             }
           </p>
         </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting || loading || count === 0}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+        >
+          <Download className="w-4 h-4" />
+          {exporting ? 'A exportar…' : 'Excel'}
+        </button>
       </div>
 
       {/* Filtros — sempre visíveis */}

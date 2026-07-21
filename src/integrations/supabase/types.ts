@@ -218,6 +218,7 @@ export type Database = {
           contador: number | null
           local: string | null
           observacoes: string | null
+          foto_url: string | null
           criado_em: string
         }
         Insert: {
@@ -231,6 +232,7 @@ export type Database = {
           contador?: number | null
           local?: string | null
           observacoes?: string | null
+          foto_url?: string | null
           criado_em?: string
         }
         Update: {
@@ -244,6 +246,7 @@ export type Database = {
           contador?: number | null
           local?: string | null
           observacoes?: string | null
+          foto_url?: string | null
           criado_em?: string
         }
         Relationships: [

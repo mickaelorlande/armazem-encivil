@@ -105,6 +105,10 @@ export async function listarMovimentosPaginados(
   }
 }
 
+export async function exportarMovimentos(filtros: FiltrosMovimentos = {}): Promise<Movement[]> {
+  return listarMovimentos({ ...filtros, limit: undefined, offset: undefined })
+}
+
 export type RegistarMovimentoInput = {
   produtoId: string
   tipo: MovementType

@@ -12,6 +12,7 @@ export type AbastecimentoPendente = {
   contador: number | null
   local: string | null
   observacoes: string | null
+  foto_url: string | null
   criado_em: string
 }
 

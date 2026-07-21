@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router';
 import {
   ArrowLeft, ArrowDownCircle, ArrowUpCircle,
   Package as PackageIcon, Pencil, MoreVertical,
-  Archive, Trash2,
+  Archive, Trash2, MessageCircle,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
@@ -174,7 +174,7 @@ export function ProductDetailPage() {
       </div>
 
       {/* Botões de acção */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className={`grid gap-3 ${product.status === 'baixo' || product.status === 'sem-stock' ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <button
           onClick={() => navigate(`/novo-movimento?produto=${product.id}&tipo=entrada`)}
           className="flex items-center justify-center gap-2 py-3.5 bg-success text-success-foreground rounded-xl font-semibold text-sm hover:bg-success/90 active:scale-[0.98] transition-all shadow-sm"
@@ -189,6 +189,29 @@ export function ProductDetailPage() {
           <ArrowUpCircle className="w-5 h-5" />
           Registar Saída
         </button>
+        {(product.status === 'baixo' || product.status === 'sem-stock') && (
+          <button
+            onClick={() => {
+              const unit = getUnitLabel(product.unit)
+              const diff = product.minStock - product.currentStock
+              const msg = [
+                `*Pedido de Reposição — ENCIVIL*`,
+                ``,
+                `Produto: ${product.name}${product.code ? ` (${product.code})` : ''}`,
+                `Stock atual: ${product.currentStock} ${unit}`,
+                `Stock mínimo: ${product.minStock} ${unit}`,
+                `Em falta: ${diff > 0 ? diff : 0} ${unit}`,
+                ``,
+                `Por favor, repor o mais brevemente possível.`,
+              ].join('\n')
+              window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
+            }}
+            className="flex items-center justify-center gap-2 py-3.5 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#1ebe5a] active:scale-[0.98] transition-all shadow-sm"
+          >
+            <MessageCircle className="w-5 h-5" />
+            Repor
+          </button>
+        )}
       </div>
 
       {/* KPIs */}
