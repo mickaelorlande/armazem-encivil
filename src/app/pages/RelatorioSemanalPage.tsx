@@ -94,9 +94,9 @@ export function RelatorioSemanalPage() {
     type CombRow  = { litros: number; custo_total: number }
     type StockRow = { stock_atual: number; stock_minimo: number }
 
-    const movs   = ((movRes.data  ?? []) as unknown) as MovRow[]
-    const combs  = ((combRes.data ?? []) as unknown) as CombRow[]
-    const stocks = ((stockRes.data ?? []) as unknown) as StockRow[]
+    const movs   = (movRes.data  ?? []) as unknown as MovRow[]
+    const combs  = (combRes.data ?? []) as unknown as CombRow[]
+    const stocks = (stockRes.data ?? []) as unknown as StockRow[]
 
     const entradas  = movs.filter(m => m.tipo === 'entrada').length
     const saidas    = movs.filter(m => m.tipo === 'saida').length

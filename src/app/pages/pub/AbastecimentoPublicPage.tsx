@@ -51,8 +51,7 @@ export function AbastecimentoPublicPage() {
     if (isNaN(custoN) || custoN < 0) { setErr('Indique o custo total.'); return }
 
     setSaving(true)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any).from('comb_abastecimentos_pendentes').insert({
+    const { error } = await supabase.from('comb_abastecimentos_pendentes').insert({
       veiculo_id:       vehicleId,
       veiculo_nome:     vehicleName,
       funcionario_nome: nome.trim(),

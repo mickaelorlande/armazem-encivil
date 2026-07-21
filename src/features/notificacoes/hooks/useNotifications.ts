@@ -41,8 +41,7 @@ export function useNotifications() {
         ? supabase.from('autos_medicao').select('id, numero, subempreiteiros(nome)').eq('estado', 'rascunho')
         : Promise.resolve({ data: [] }),
       podeCombustivel
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ? (supabase as any).from('comb_abastecimentos_pendentes').select('id', { count: 'exact', head: true })
+        ? supabase.from('comb_abastecimentos_pendentes').select('id', { count: 'exact', head: true })
         : Promise.resolve({ data: null, count: 0 }),
     ])
 

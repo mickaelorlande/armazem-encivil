@@ -23,16 +23,15 @@ export function usePendentes() {
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error: err } = await (supabase as any)
+    const { data, error: err } = await supabase
       .from('comb_abastecimentos_pendentes')
       .select('*')
       .order('criado_em', { ascending: false })
     if (err) {
-      setError((err as { message: string }).message)
+      setError(err.message)
       setItems([])
     } else {
-      setItems(((data ?? []) as unknown) as AbastecimentoPendente[])
+      setItems((data ?? []) as AbastecimentoPendente[])
     }
     setLoading(false)
   }, [])
@@ -40,16 +39,14 @@ export function usePendentes() {
   useEffect(() => { load() }, [load])
 
   const aprovar = async (id: string): Promise<boolean> => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: err } = await (supabase as any).rpc('aprovar_abastecimento_pendente', { p_id: id })
+    const { error: err } = await supabase.rpc('aprovar_abastecimento_pendente', { p_id: id })
     if (err) return false
     setItems(prev => prev.filter(p => p.id !== id))
     return true
   }
 
   const rejeitar = async (id: string): Promise<boolean> => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: err } = await (supabase as any).rpc('rejeitar_abastecimento_pendente', { p_id: id })
+    const { error: err } = await supabase.rpc('rejeitar_abastecimento_pendente', { p_id: id })
     if (err) return false
     setItems(prev => prev.filter(p => p.id !== id))
     return true

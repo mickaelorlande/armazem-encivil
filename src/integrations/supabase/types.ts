@@ -206,6 +206,56 @@ export type Database = {
           },
         ]
       }
+      comb_abastecimentos_pendentes: {
+        Row: {
+          id: string
+          veiculo_id: string
+          veiculo_nome: string
+          funcionario_nome: string
+          data: string
+          litros: number
+          custo_total: number
+          contador: number | null
+          local: string | null
+          observacoes: string | null
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          veiculo_id: string
+          veiculo_nome: string
+          funcionario_nome: string
+          data?: string
+          litros: number
+          custo_total: number
+          contador?: number | null
+          local?: string | null
+          observacoes?: string | null
+          criado_em?: string
+        }
+        Update: {
+          id?: string
+          veiculo_id?: string
+          veiculo_nome?: string
+          funcionario_nome?: string
+          data?: string
+          litros?: number
+          custo_total?: number
+          contador?: number | null
+          local?: string | null
+          observacoes?: string | null
+          criado_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comb_abastecimentos_pendentes_veiculo_id_fkey"
+            columns: ["veiculo_id"]
+            isOneToOne: false
+            referencedRelation: "comb_veiculos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comb_veiculos: {
         Row: {
           ativo: boolean
@@ -701,6 +751,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      aprovar_abastecimento_pendente: { Args: { p_id: string }; Returns: void }
       auth_role: { Args: never; Returns: string }
       gerar_codigo_ferramenta: { Args: never; Returns: string }
       gerar_codigo_produto: { Args: never; Returns: string }
@@ -867,6 +918,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rejeitar_abastecimento_pendente: { Args: { p_id: string }; Returns: void }
       validar_subempreiteiro: {
         Args: { p_id: string }
         Returns: {
