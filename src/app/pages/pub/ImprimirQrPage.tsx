@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useSearchParams } from 'react-router'
 import { QRCodeSVG } from 'qrcode.react'
 import { Fuel, Printer, AlertTriangle } from 'lucide-react'
@@ -13,17 +13,20 @@ export function ImprimirQrPage() {
   const vehicleName = params.get('vn') ?? 'Viatura'
   const vehicleCode = params.get('vc') ?? ''
 
-  const [ready, setReady] = useState(false)
-
   const formUrl = `${window.location.origin}/pub/combustivel?v=${vehicleId}&vn=${encodeURIComponent(vehicleName)}`
 
   useEffect(() => {
     if (!vehicleId) return
-    // Pequeno delay para o QR code renderizar antes de imprimir
+    // Espera 2 frames para garantir que o SVG do QR code está pintado antes de imprimir.
+    // window.print() chama-se depois do segundo requestAnimationFrame — nesse ponto
+    // o browser já fez layout + paint e o SVG aparece no PDF.
     const t = setTimeout(() => {
-      setReady(true)
-      window.print()
-    }, 600)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.print()
+        })
+      })
+    }, 400)
     return () => clearTimeout(t)
   }, [vehicleId])
 
@@ -78,8 +81,8 @@ export function ImprimirQrPage() {
             {vehicleCode && <p className="text-sm text-gray-400 font-medium mt-1">{vehicleCode}</p>}
           </div>
 
-          {/* QR Code */}
-          <div className={`p-5 bg-white border-4 border-gray-900 rounded-2xl transition-opacity ${ready ? 'opacity-100' : 'opacity-0'}`}>
+          {/* QR Code — sempre visível (sem opacity transition que quebra o PDF) */}
+          <div className="p-5 bg-white border-4 border-gray-900 rounded-2xl">
             <QRCodeSVG
               value={formUrl}
               size={220}
